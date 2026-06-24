@@ -33,8 +33,8 @@ export function HomePage() {
 
   return (
     <main>
-      <h1>Mangá Desk</h1>
-      <p>Busque mangás usando a API do MangaDex.</p>
+      <h1>Naniwa</h1>
+      <p>Busque algum mangá.</p>
 
       <form onSubmit={handleSearch}>
         <input
