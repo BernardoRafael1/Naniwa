@@ -8,6 +8,7 @@ export function HomePage() {
   const [mangas, setMangas] = useState<MangaDexManga[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
 
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -19,6 +20,7 @@ export function HomePage() {
     try {
       setIsLoading(true);
       setErrorMessage("");
+      setHasSearched(true);
 
       const response = await searchMangaByTitle(searchTerm, 10);
 
@@ -33,8 +35,8 @@ export function HomePage() {
 
   return (
     <main>
-      <h1>Naniwa</h1>
-      <p>Busque algum mangá.</p>
+      <h1>Mangá Desk</h1>
+      <p>Busque mangás usando a API do MangaDex.</p>
 
       <form onSubmit={handleSearch}>
         <input
@@ -51,8 +53,8 @@ export function HomePage() {
 
       {errorMessage && <p>{errorMessage}</p>}
 
-      {!isLoading && !errorMessage && mangas.length === 0 && (
-        <p>Nenhum mangá carregado ainda.</p>
+      {!isLoading && !errorMessage && hasSearched && mangas.length === 0 && (
+        <p>Nenhum resultado encontrado.</p>
       )}
 
       <section>
@@ -70,9 +72,7 @@ export function HomePage() {
               <p>Ano: {manga.attributes.year ?? "Não informado"}</p>
               <p>Status: {manga.attributes.status}</p>
 
-              <Link to={`/manga/${manga.id}`}>
-                Ver detalhes
-              </Link>
+              <Link to={`/manga/${manga.id}`}>Ver detalhes</Link>
             </article>
           );
         })}
