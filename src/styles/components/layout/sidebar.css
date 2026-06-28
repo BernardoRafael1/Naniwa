@@ -1,0 +1,191 @@
+/* ---- Menu lateral ---- */
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background-color: rgba(15, 17, 21, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-slow);
+}
+
+.sidebar-overlay--open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 50;
+  width: min(86vw, 290px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-4);
+  background-color: var(--color-bg-elevated);
+  border-right: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+  transform: translateX(-102%);
+  transition: transform var(--transition-slow);
+  will-change: transform;
+}
+
+.sidebar--open {
+  transform: translateX(0);
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3) var(--space-5);
+}
+
+.sidebar__logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary);
+  color: var(--color-text-on-primary);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.sidebar__brand-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-align: left;
+  transition: background-color var(--transition), color var(--transition);
+}
+
+.sidebar__link:hover:not(:disabled) {
+  background-color: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.sidebar__link--active {
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-contrast);
+  font-weight: 600;
+}
+
+.sidebar__link:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.sidebar__link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  transition: color var(--transition);
+}
+
+.sidebar__link--active .sidebar__link-icon,
+.sidebar__link:hover:not(:disabled) .sidebar__link-icon {
+  color: inherit;
+}
+
+.sidebar__soon {
+  margin-left: auto;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-muted);
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-pill);
+}
+
+.sidebar__footer {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+/* ---- Alternador de tema ---- */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  transition: background-color var(--transition);
+}
+
+.theme-toggle:hover {
+  background-color: var(--color-surface-muted);
+}
+
+.theme-toggle__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+}
+
+.theme-toggle__label {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.theme-toggle__switch {
+  margin-left: auto;
+  position: relative;
+  width: 2.6rem;
+  height: 1.5rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-border-strong);
+  transition: background-color var(--transition);
+  flex: 0 0 auto;
+}
+
+.theme-toggle__switch.is-on {
+  background-color: var(--color-primary);
+}
+
+.theme-toggle__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition);
+}
+
+.theme-toggle__switch.is-on .theme-toggle__knob {
+  transform: translateX(1.1rem);
+}

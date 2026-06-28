@@ -1,0 +1,53 @@
+/* ---- Inputs ---- */
+
+.input {
+  width: 100%;
+  height: 3.25rem;
+  padding: 0 1.1rem;
+  font-size: 1rem;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.input:hover {
+  border-color: var(--color-border-strong);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+}
+
+/* Agrupamento input + botão (campo de busca). */
+.search-field {
+  display: flex;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.search-field .input {
+  flex: 1 1 auto;
+}
+
+.search-field .btn {
+  flex: 0 0 auto;
+  height: 3.25rem;
+}
+
+@media (max-width: 540px) {
+  .search-field {
+    flex-direction: column;
+  }
+
+  .search-field .btn {
+    width: 100%;
+  }
+}

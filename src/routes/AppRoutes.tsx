@@ -8,7 +8,10 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/manga/:mangaId" element={<MangaDetailsPage />} />
-      <Route path="/reader/:chapterId" element={<ReaderPage />} />
+      <Route
+        path="/manga/:mangaId/reader/:chapterId"
+        element={<ReaderPage />}
+      />
     </Routes>
   );
 }

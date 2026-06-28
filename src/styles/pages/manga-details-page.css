@@ -1,0 +1,147 @@
+/* ---- MangaDetailsPage ---- */
+
+.details {
+  padding-block: var(--space-5) var(--space-8);
+}
+
+.details__back {
+  margin-bottom: var(--space-5);
+}
+
+/* Cabeçalho: capa + informações principais. */
+.details-header {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  gap: clamp(var(--space-5), 4vw, var(--space-7));
+  align-items: start;
+  margin-bottom: var(--space-7);
+}
+
+.details-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background-color: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+.details-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.details-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.details-info__title {
+  font-size: clamp(1.7rem, 1.2rem + 2vw, 2.6rem);
+}
+
+.details-info__authors {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+}
+
+.details-info__authors strong {
+  color: var(--color-text);
+}
+
+.details-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tag-chip {
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.details-description {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  white-space: pre-line;
+}
+
+/* Blocos de metadados. */
+.details-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.meta-block {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.meta-block__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.meta-block__value {
+  margin-top: var(--space-1);
+  font-weight: 600;
+  color: var(--color-text);
+  text-transform: capitalize;
+}
+
+/* Seção de capítulos. */
+.details-section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.details-section__title .count-pill {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary-contrast);
+  background-color: var(--color-primary-soft);
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--radius-pill);
+}
+
+/* Responsivo: empilha capa em cima das informações. */
+@media (max-width: 760px) {
+  .details-header {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .details-cover {
+    max-width: 240px;
+  }
+
+  .details-tags,
+  .details-meta-grid {
+    justify-content: center;
+  }
+
+  .details-info__title {
+    text-align: center;
+  }
+}

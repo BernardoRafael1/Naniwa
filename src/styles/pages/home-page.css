@@ -1,0 +1,197 @@
+/* ---- HomePage ---- */
+
+/* Barra superior: hambúrguer à esquerda, busca centralizada. */
+.home-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) clamp(var(--space-4), 4vw, var(--space-7));
+  background-color: color-mix(in srgb, var(--color-bg) 86%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.home-topbar__search {
+  justify-self: center;
+  width: 100%;
+  max-width: 460px;
+}
+
+/* Espaçador para equilibrar a grade (mesma área do botão). */
+.home-topbar__spacer {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+/* Campo de busca compacto usado na topbar. */
+.search-field--compact .input {
+  height: 2.75rem;
+}
+
+.search-field--compact .btn {
+  height: 2.75rem;
+  padding-inline: 1rem;
+}
+
+.home {
+  padding-block: clamp(var(--space-5), 5vh, var(--space-7)) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+/* Boas-vindas */
+.home-welcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+}
+
+.home-welcome__title {
+  font-size: clamp(1.9rem, 1.4rem + 2.4vw, 2.9rem);
+}
+
+.home-welcome__title .accent {
+  color: var(--color-primary);
+}
+
+.home-welcome__subtitle {
+  max-width: 56ch;
+  font-size: 1.05rem;
+  color: var(--color-text-secondary);
+}
+
+/* ---- Seções ---- */
+.manga-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.manga-section__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.manga-section__title {
+  font-size: clamp(1.2rem, 1rem + 0.8vw, 1.5rem);
+}
+
+.manga-section__subtitle {
+  margin-top: var(--space-1);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+/* Carrossel horizontal de cards. */
+.manga-row {
+  display: flex;
+  gap: clamp(var(--space-3), 1.6vw, var(--space-5));
+  overflow-x: auto;
+  padding-bottom: var(--space-3);
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+.manga-row::-webkit-scrollbar {
+  height: 8px;
+}
+
+.manga-row::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+
+.manga-row .manga-card,
+.manga-row .skeleton-card {
+  flex: 0 0 auto;
+  width: clamp(150px, 40vw, 184px);
+  scroll-snap-align: start;
+}
+
+/* Mensagem de falha por seção. */
+.section-message {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  font-size: 0.92rem;
+}
+
+/* Estado vazio de "Continuar lendo". */
+.continue-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.continue-empty__icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.continue-empty__title {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.continue-empty__text {
+  margin-top: var(--space-1);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+/* ---- Esqueletos de card ---- */
+.skeleton-card {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+}
+
+.skeleton-card__cover {
+  aspect-ratio: 2 / 3;
+  width: 100%;
+}
+
+.skeleton-card__body {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.skeleton-line {
+  height: 0.8rem;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-line--short {
+  width: 55%;
+}
+
+@media (max-width: 560px) {
+  .home-topbar {
+    grid-template-columns: auto 1fr;
+  }
+
+  .home-topbar__spacer {
+    display: none;
+  }
+}

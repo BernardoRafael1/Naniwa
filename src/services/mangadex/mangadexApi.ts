@@ -34,6 +34,30 @@ export async function searchMangaByTitle(
   return mangadexRequest<MangaSearchResponse>(`/manga?${params.toString()}`);
 }
 
+/**
+ * Lista mangás aplicando uma ordenação arbitrária. Usado pelas seções
+ * curadas da HomePage (populares, lançamentos, etc). Sempre inclui a capa
+ * e restringe o conteúdo a classificações seguras.
+ */
+export async function getMangaList(
+  order: Record<string, string> = {},
+  limit = 12
+): Promise<MangaSearchResponse> {
+  const params = new URLSearchParams();
+
+  params.set("limit", String(limit));
+  params.append("includes[]", "cover_art");
+  params.append("contentRating[]", "safe");
+  params.append("contentRating[]", "suggestive");
+  params.set("hasAvailableChapters", "true");
+
+  for (const [key, value] of Object.entries(order)) {
+    params.set(`order[${key}]`, value);
+  }
+
+  return mangadexRequest<MangaSearchResponse>(`/manga?${params.toString()}`);
+}
+
 export async function getMangaDetails(
   mangaId: string
 ): Promise<MangaDetailsResponse> {
