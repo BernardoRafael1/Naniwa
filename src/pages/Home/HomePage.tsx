@@ -214,7 +214,22 @@ export function HomePage() {
             <h2 className="manga-section__title">Continuar lendo</h2>
           </div>
           <div className="continue-empty">
-            <span className="continue-empty__icon">📕</span>
+            <span className="continue-empty__icon" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                width="28"
+                height="28"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M6 4h10a1 1 0 0 1 1 1v15H7a1 1 0 0 1-1-1V4Z" />
+                <path d="M6 4a2 2 0 0 0-2 2v12" />
+                <path d="M10 8h4" />
+              </svg>
+            </span>
             <div>
               <p className="continue-empty__title">
                 Você ainda não começou nenhuma leitura.

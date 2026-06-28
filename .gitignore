@@ -43,3 +43,5 @@ Thumbs.db
 *.AppImage
 *.deb
 *.rpm
+
+/src/generated/prisma

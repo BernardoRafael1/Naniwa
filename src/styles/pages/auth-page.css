@@ -1,0 +1,200 @@
+/* =========================================================================
+   Página de autenticação — Naniwa
+   Tela centralizada usada por LoginPage e RegisterPage.
+   Respeita o tema atual via tokens de variables.css
+   (claro: branco + laranja / escuro: preto + azul).
+   ========================================================================= */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  background-color: var(--color-bg);
+  /* Brilho suave da cor de marca ao fundo. */
+  background-image: radial-gradient(
+    140% 90% at 50% -10%,
+    var(--color-primary-soft) 0%,
+    transparent 55%
+  );
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-7) var(--space-6);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ---- Identidade visual ---- */
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.auth-brand-badge {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.3rem 0.85rem;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-contrast);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.auth-brand h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.auth-brand p {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* ---- Formulário ---- */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.auth-field span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.auth-field input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.95rem;
+  color: var(--color-text);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.auth-field input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.auth-field input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+}
+
+/* ---- Botão principal ---- */
+.auth-submit {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-1);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-on-primary);
+  background-color: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-primary);
+  cursor: pointer;
+  transition: background-color var(--transition), transform var(--transition-fast),
+    box-shadow var(--transition);
+}
+
+.auth-submit:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.auth-submit:active:not(:disabled) {
+  background-color: var(--color-primary-active);
+  transform: translateY(1px);
+}
+
+.auth-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  box-shadow: none;
+}
+
+/* ---- Estados ---- */
+.auth-error {
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.88rem;
+  color: var(--color-danger);
+  background-color: var(--color-danger-soft);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-md);
+}
+
+.auth-loading {
+  padding: var(--space-5) 0;
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+}
+
+/* ---- Links de navegação ---- */
+.auth-alt {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.auth-alt a {
+  font-weight: 600;
+  color: var(--color-primary);
+  transition: color var(--transition);
+}
+
+.auth-alt a:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+.auth-back {
+  align-self: center;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  transition: color var(--transition);
+}
+
+.auth-back:hover {
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+}
+
+/* ---- Responsivo ---- */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: var(--space-6) var(--space-5);
+  }
+
+  .auth-brand h1 {
+    font-size: 1.4rem;
+  }
+}

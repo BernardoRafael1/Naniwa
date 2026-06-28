@@ -1,10 +1,3 @@
-/* =========================================================================
-   Naniwa — folha de estilo raiz.
-   Importa, em ordem, tokens, reset, tipografia, layout, componentes e páginas.
-   Importe APENAS este arquivo na aplicação (ver src/main.tsx).
-   ========================================================================= */
-
-/* Tokens primeiro para que estejam disponíveis em todo o resto. */
 @import "./themes/variables.css";
 
 /* Base */
@@ -29,3 +22,4 @@
 @import "./pages/home-page.css";
 @import "./pages/manga-details-page.css";
 @import "./pages/reader-page.css";
+@import "./pages/auth-page.css";

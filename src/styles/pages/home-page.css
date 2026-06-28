@@ -142,8 +142,15 @@
 }
 
 .continue-empty__icon {
-  font-size: 2rem;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 
 .continue-empty__title {

@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../hooks/useTheme";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -69,6 +70,31 @@ const SettingsIcon = (
   </Icon>
 );
 
+const LoginIcon = (
+  <Icon>
+    <path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" />
+    <path d="M10 12H3" />
+    <path d="m6.5 8.5 3.5 3.5-3.5 3.5" />
+  </Icon>
+);
+
+const RegisterIcon = (
+  <Icon>
+    <circle cx="10" cy="8.5" r="3.2" />
+    <path d="M4 19a6 6 0 0 1 12 0" />
+    <path d="M18 7v6" />
+    <path d="M21 10h-6" />
+  </Icon>
+);
+
+const LogoutIcon = (
+  <Icon>
+    <path d="M10 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
+    <path d="M14 12h7" />
+    <path d="m17.5 8.5 3.5 3.5-3.5 3.5" />
+  </Icon>
+);
+
 type NavItem = {
   label: string;
   icon: ReactNode;
@@ -92,6 +118,14 @@ type SidebarProps = {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout();
+    onClose();
+    navigate("/", { replace: true });
+  }
 
   useEffect(() => {
     if (!isOpen) {
@@ -157,6 +191,51 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         <div className="sidebar__footer">
+          <div className="sidebar__auth">
+            {isAuthenticated && user ? (
+              <>
+                <div className="sidebar__user">
+                  <span className="sidebar__user-avatar">
+                    {user.name.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="sidebar__user-info">
+                    <span className="sidebar__user-name">{user.name}</span>
+                    <span className="sidebar__user-email">{user.email}</span>
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  className="sidebar__link"
+                  onClick={handleLogout}
+                >
+                  <span className="sidebar__link-icon">{LogoutIcon}</span>
+                  <span>Sair</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="sidebar__link"
+                  onClick={onClose}
+                >
+                  <span className="sidebar__link-icon">{LoginIcon}</span>
+                  <span>Entrar</span>
+                </Link>
+
+                <Link
+                  to="/register"
+                  className="sidebar__link"
+                  onClick={onClose}
+                >
+                  <span className="sidebar__link-icon">{RegisterIcon}</span>
+                  <span>Criar conta</span>
+                </Link>
+              </>
+            )}
+          </div>
+
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
       </aside>
