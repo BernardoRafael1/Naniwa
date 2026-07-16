@@ -6,17 +6,18 @@ import {
   useState,
 } from "react";
 import {
-  getCurrentAuthUser,
+  getCurrentAuthSession,
   loginAuthUser,
+  onAuthSessionChange,
   registerAuthUser,
+  signOutAuthUser,
 } from "../services/auth/authApi";
 import type {
+  AuthResponse,
   AuthUser,
   LoginInput,
   RegisterInput,
 } from "../services/auth/authTypes";
-
-const AUTH_TOKEN_STORAGE_KEY = "naniwa_auth_token";
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -25,7 +26,7 @@ type AuthContextValue = {
   isLoading: boolean;
   login: (input: LoginInput) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 type AuthProviderProps = {
@@ -41,54 +42,64 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const isAuthenticated = Boolean(user && token);
 
-  function saveAuthSession(authToken: string, authUser: AuthUser) {
-    localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, authToken);
-    setToken(authToken);
-    setUser(authUser);
-  }
-
-  function logout() {
-    localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
-    setToken(null);
-    setUser(null);
+  function applySession(session: AuthResponse | null) {
+    setToken(session?.token ?? null);
+    setUser(session?.user ?? null);
   }
 
   async function login(input: LoginInput) {
     const response = await loginAuthUser(input);
 
-    saveAuthSession(response.token, response.user);
+    applySession(response);
   }
 
   async function register(input: RegisterInput) {
     const response = await registerAuthUser(input);
 
-    saveAuthSession(response.token, response.user);
+    applySession(response);
+  }
+
+  async function logout() {
+    await signOutAuthUser();
+
+    applySession(null);
   }
 
   useEffect(() => {
-    const storedToken = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+    let isActive = true;
 
-    if (!storedToken) {
-      setIsLoading(false);
-      return;
-    }
-
-    const activeToken = storedToken;
-
-    async function loadStoredSession() {
+    async function loadInitialSession() {
       try {
-        const response = await getCurrentAuthUser(activeToken);
+        const session = await getCurrentAuthSession();
 
-        saveAuthSession(activeToken, response.user);
+        if (isActive) {
+          applySession(session);
+        }
       } catch (error) {
         console.error(error);
-        logout();
+
+        if (isActive) {
+          applySession(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (isActive) {
+          setIsLoading(false);
+        }
       }
     }
 
-    loadStoredSession();
+    loadInitialSession();
+
+    const unsubscribe = onAuthSessionChange((session) => {
+      if (isActive) {
+        applySession(session);
+      }
+    });
+
+    return () => {
+      isActive = false;
+      unsubscribe();
+    };
   }, []);
 
   return (
