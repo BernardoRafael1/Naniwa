@@ -11,8 +11,33 @@ import type {
 const MANGADEX_BASE_URL =
   import.meta.env.VITE_MANGADEX_API_BASE_URL || "https://api.mangadex.org";
 
+/**
+ * Monta a URL final da requisição.
+ *
+ * - Base absoluta (ex.: https://api.mangadex.org): concatena o endpoint
+ *   direto — comportamento usado no Tauri/local.
+ * - Base relativa/proxy (ex.: /api/mangadex): converte o endpoint
+ *   "/manga?title=x&limit=1" em "/api/mangadex?path=/manga&title=x&limit=1".
+ */
+function buildRequestUrl(endpoint: string): string {
+  if (/^https?:\/\//i.test(MANGADEX_BASE_URL)) {
+    return `${MANGADEX_BASE_URL}${endpoint}`;
+  }
+
+  const questionIndex = endpoint.indexOf("?");
+  const pathPart =
+    questionIndex >= 0 ? endpoint.slice(0, questionIndex) : endpoint;
+  const queryPart = questionIndex >= 0 ? endpoint.slice(questionIndex + 1) : "";
+
+  const search = `path=${encodeURIComponent(pathPart)}${
+    queryPart ? `&${queryPart}` : ""
+  }`;
+
+  return `${MANGADEX_BASE_URL}?${search}`;
+}
+
 async function mangadexRequest<T>(endpoint: string): Promise<T> {
-  const response = await fetch(`${MANGADEX_BASE_URL}${endpoint}`, {
+  const response = await fetch(buildRequestUrl(endpoint), {
     headers: {
       Accept: "application/json",
     },
