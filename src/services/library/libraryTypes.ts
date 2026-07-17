@@ -1,9 +1,25 @@
-export type LibraryStatus =
-  | "reading"
-  | "completed"
-  | "planned"
-  | "paused"
-  | "dropped";
+export type LibraryStatus = "reading" | "planned" | "completed" | "dropped";
+
+export const LIBRARY_STATUSES: LibraryStatus[] = [
+  "reading",
+  "planned",
+  "completed",
+  "dropped",
+];
+
+/**
+ * Normaliza o status vindo do banco para os valores oficiais do frontend.
+ * Dados antigos com "paused" (ou qualquer valor inesperado) viram "planned".
+ */
+export function normalizeLibraryStatus(
+  status: string | null | undefined
+): LibraryStatus {
+  if (status === "reading" || status === "completed" || status === "dropped") {
+    return status;
+  }
+
+  return "planned";
+}
 
 export type LibraryItem = {
   user_id: string;

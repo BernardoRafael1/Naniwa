@@ -2,6 +2,12 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Sidebar } from "../../components/layout/Sidebar";
 import { useAuth } from "../../contexts/AuthContext";
+import {
+  type AppLanguage,
+  DEFAULT_APP_LANGUAGE,
+  normalizeLanguage,
+} from "../../i18n/i18nTypes";
+import { useTranslation } from "../../i18n/useTranslation";
 import { applyTheme, storeTheme, type Theme } from "../../lib/theme";
 import {
   updateAuthEmail,
@@ -13,11 +19,10 @@ import {
   updateMyPreferences,
 } from "../../services/user/preferencesApi";
 import { getMyProfile, updateMyProfile } from "../../services/user/profileApi";
-import {
-  DEFAULT_LANGUAGE,
-  type ReaderDirection,
-  type ReaderMode,
-  type ThemePreference,
+import type {
+  ReaderDirection,
+  ReaderMode,
+  ThemePreference,
 } from "../../services/user/userTypes";
 
 type ProfileTab = "conta" | "preferencias";
@@ -47,6 +52,7 @@ function resolveTheme(preference: ThemePreference): Theme {
 
 export function ProfilePage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { t, setLanguage } = useTranslation();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ProfileTab>("conta");
@@ -65,7 +71,8 @@ export function ProfilePage() {
 
   // Preferências
   const [theme, setTheme] = useState<ThemePreference>("system");
-  const [defaultLanguage, setDefaultLanguage] = useState(DEFAULT_LANGUAGE);
+  const [languageChoice, setLanguageChoice] =
+    useState<AppLanguage>(DEFAULT_APP_LANGUAGE);
   const [readerMode, setReaderMode] = useState<ReaderMode>("single-page");
   const [readerDirection, setReaderDirection] =
     useState<ReaderDirection>("ltr");
@@ -109,17 +116,14 @@ export function ProfilePage() {
 
         if (preferences) {
           setTheme(preferences.theme);
-          setDefaultLanguage(preferences.default_language ?? DEFAULT_LANGUAGE);
+          setLanguageChoice(normalizeLanguage(preferences.default_language));
           setReaderMode(preferences.reader_mode);
           setReaderDirection(preferences.reader_direction);
         }
       } catch (error) {
         console.error(error);
         if (isActive) {
-          setAccountMessage({
-            error: "Não foi possível carregar seus dados.",
-            success: "",
-          });
+          setAccountMessage({ error: t("profile.loadError"), success: "" });
         }
       } finally {
         if (isActive) {
@@ -157,10 +161,7 @@ export function ProfilePage() {
 
     // Nome de usuário é obrigatório; nome de exibição pode ficar vazio.
     if (!trimmedUsername) {
-      setAccountMessage({
-        error: "O nome de usuário não pode ser vazio.",
-        success: "",
-      });
+      setAccountMessage({ error: t("profile.usernameRequired"), success: "" });
       return;
     }
 
@@ -190,15 +191,12 @@ export function ProfilePage() {
       setAccountMessage({
         error: "",
         success: emailChanged
-          ? "Alterações salvas. Confirme o novo e-mail pelo link enviado."
-          : "Alterações salvas com sucesso.",
+          ? t("profile.accountSavedEmail")
+          : t("profile.accountSaved"),
       });
     } catch (error) {
       console.error(error);
-      setAccountMessage({
-        error: "Não foi possível salvar as alterações da conta.",
-        success: "",
-      });
+      setAccountMessage({ error: t("profile.accountError"), success: "" });
     } finally {
       setIsSavingAccount(false);
     }
@@ -217,21 +215,18 @@ export function ProfilePage() {
     try {
       await updateMyPreferences(user.id, {
         theme,
-        default_language: defaultLanguage,
+        default_language: languageChoice,
         reader_mode: readerMode,
         reader_direction: readerDirection,
       });
 
-      setPrefsMessage({
-        error: "",
-        success: "Preferências salvas com sucesso.",
-      });
+      // Aplica o novo idioma ao layout imediatamente após salvar.
+      setLanguage(languageChoice);
+
+      setPrefsMessage({ error: "", success: t("profile.preferencesSaved") });
     } catch (error) {
       console.error(error);
-      setPrefsMessage({
-        error: "Não foi possível salvar as preferências.",
-        success: "",
-      });
+      setPrefsMessage({ error: t("profile.preferencesError"), success: "" });
     } finally {
       setIsSavingPrefs(false);
     }
@@ -252,7 +247,7 @@ export function ProfilePage() {
         <button
           type="button"
           className="icon-button"
-          aria-label="Abrir menu"
+          aria-label="Menu"
           onClick={() => setIsSidebarOpen(true)}
         >
           <span className="icon-button__bars" />
@@ -263,31 +258,31 @@ export function ProfilePage() {
 
       <main className="profile container">
         <section className="home-welcome">
-          <h1 className="home-welcome__title">Seu perfil</h1>
+          <h1 className="home-welcome__title">{t("profile.welcomeTitle")}</h1>
           <p className="home-welcome__subtitle">
-            Gerencie sua conta e preferências de leitura.
+            {t("profile.welcomeSubtitle")}
           </p>
         </section>
 
         {!isAuthenticated ? (
           <div className="empty-state">
             <span className="empty-state__icon">🔒</span>
-            <p className="empty-state__title">Entre para acessar seu perfil</p>
-            <p className="empty-state__text">
-              Faça login para editar sua conta e preferências.
+            <p className="empty-state__title">
+              {t("profile.loggedOutTitle")}
             </p>
+            <p className="empty-state__text">{t("profile.loggedOutText")}</p>
             <Link className="btn btn--primary" to="/login">
-              Entrar
+              {t("auth.login")}
             </Link>
           </div>
         ) : isLoading ? (
           <div className="loading">
             <div className="spinner" />
-            <p className="loading__text">Carregando seu perfil...</p>
+            <p className="loading__text">{t("profile.loading")}</p>
           </div>
         ) : (
           <div className="profile-layout">
-            <nav className="profile-tabs" aria-label="Seções do perfil">
+            <nav className="profile-tabs" aria-label={t("profile.welcomeTitle")}>
               <button
                 type="button"
                 className={`profile-tab ${
@@ -295,7 +290,7 @@ export function ProfilePage() {
                 }`}
                 onClick={() => setActiveTab("conta")}
               >
-                Conta
+                {t("profile.tabAccount")}
               </button>
 
               <button
@@ -305,7 +300,7 @@ export function ProfilePage() {
                 }`}
                 onClick={() => setActiveTab("preferencias")}
               >
-                Preferências
+                {t("profile.tabPreferences")}
               </button>
             </nav>
 
@@ -318,7 +313,7 @@ export function ProfilePage() {
                     </div>
                     <div className="profile-account-head__info">
                       <span className="profile-account-head__name">
-                        {username || "Sem nome de usuário"}
+                        {username || t("profile.noUsername")}
                       </span>
                       <span className="profile-account-head__email">
                         {user?.email}
@@ -327,44 +322,44 @@ export function ProfilePage() {
                   </div>
 
                   <label className="profile-field">
-                    <span>Nome de usuário</span>
+                    <span>{t("profile.usernameLabel")}</span>
                     <input
                       className="input"
                       type="text"
-                      placeholder="Seu nome de usuário"
+                      placeholder={t("profile.usernamePlaceholder")}
                       value={username}
                       onChange={(event) => setUsername(event.target.value)}
                     />
                   </label>
 
                   <label className="profile-field">
-                    <span>Nome de exibição</span>
+                    <span>{t("profile.displayNameLabel")}</span>
                     <input
                       className="input"
                       type="text"
-                      placeholder="Como quer ser exibido"
+                      placeholder={t("profile.displayNamePlaceholder")}
                       value={displayName}
                       onChange={(event) => setDisplayName(event.target.value)}
                     />
                   </label>
 
                   <label className="profile-field">
-                    <span>E-mail</span>
+                    <span>{t("profile.emailLabel")}</span>
                     <input
                       className="input"
                       type="email"
-                      placeholder="seuemail@exemplo.com"
+                      placeholder={t("profile.emailPlaceholder")}
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
                     />
                   </label>
 
                   <label className="profile-field">
-                    <span>Nova senha</span>
+                    <span>{t("profile.newPasswordLabel")}</span>
                     <input
                       className="input"
                       type="password"
-                      placeholder="Deixe em branco para manter a atual"
+                      placeholder={t("profile.newPasswordPlaceholder")}
                       value={newPassword}
                       onChange={(event) => setNewPassword(event.target.value)}
                       minLength={6}
@@ -389,7 +384,9 @@ export function ProfilePage() {
                       type="submit"
                       disabled={isSavingAccount}
                     >
-                      {isSavingAccount ? "Salvando..." : "Salvar alterações"}
+                      {isSavingAccount
+                        ? t("common.saving")
+                        : t("profile.saveChanges")}
                     </button>
                   </div>
                 </form>
@@ -398,10 +395,12 @@ export function ProfilePage() {
                   className="profile-card"
                   onSubmit={handleSavePreferences}
                 >
-                  <h2 className="profile-card__title">Preferências</h2>
+                  <h2 className="profile-card__title">
+                    {t("profile.preferencesTitle")}
+                  </h2>
 
                   <label className="profile-field">
-                    <span>Tema</span>
+                    <span>{t("profile.themeLabel")}</span>
                     <select
                       className="input"
                       value={theme}
@@ -411,29 +410,28 @@ export function ProfilePage() {
                         )
                       }
                     >
-                      <option value="system">Sistema</option>
-                      <option value="light">Claro</option>
-                      <option value="dark">Escuro</option>
+                      <option value="system">{t("profile.themeSystem")}</option>
+                      <option value="light">{t("profile.themeLight")}</option>
+                      <option value="dark">{t("profile.themeDark")}</option>
                     </select>
                   </label>
 
                   <label className="profile-field">
-                    <span>Idioma padrão</span>
+                    <span>{t("profile.languageLabel")}</span>
                     <select
                       className="input"
-                      value={defaultLanguage}
+                      value={languageChoice}
                       onChange={(event) =>
-                        setDefaultLanguage(event.target.value)
+                        setLanguageChoice(event.target.value as AppLanguage)
                       }
                     >
-                      <option value="pt-br">Português (BR)</option>
-                      <option value="en">Inglês</option>
-                      <option value="es">Espanhol</option>
+                      <option value="pt-br">Português</option>
+                      <option value="en">English</option>
                     </select>
                   </label>
 
                   <label className="profile-field">
-                    <span>Modo de leitura</span>
+                    <span>{t("profile.readerModeLabel")}</span>
                     <select
                       className="input"
                       value={readerMode}
@@ -441,13 +439,17 @@ export function ProfilePage() {
                         setReaderMode(event.target.value as ReaderMode)
                       }
                     >
-                      <option value="single-page">Página única</option>
-                      <option value="continuous">Contínuo</option>
+                      <option value="single-page">
+                        {t("profile.readerModeSingle")}
+                      </option>
+                      <option value="continuous">
+                        {t("profile.readerModeContinuous")}
+                      </option>
                     </select>
                   </label>
 
                   <label className="profile-field">
-                    <span>Direção de leitura</span>
+                    <span>{t("profile.readerDirectionLabel")}</span>
                     <select
                       className="input"
                       value={readerDirection}
@@ -457,8 +459,12 @@ export function ProfilePage() {
                         )
                       }
                     >
-                      <option value="ltr">Esquerda → Direita</option>
-                      <option value="rtl">Direita → Esquerda</option>
+                      <option value="ltr">
+                        {t("profile.readerDirectionLtr")}
+                      </option>
+                      <option value="rtl">
+                        {t("profile.readerDirectionRtl")}
+                      </option>
                     </select>
                   </label>
 
@@ -480,7 +486,9 @@ export function ProfilePage() {
                       type="submit"
                       disabled={isSavingPrefs}
                     >
-                      {isSavingPrefs ? "Salvando..." : "Salvar preferências"}
+                      {isSavingPrefs
+                        ? t("common.saving")
+                        : t("profile.savePreferences")}
                     </button>
                   </div>
                 </form>

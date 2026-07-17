@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { MangaCard } from "./MangaCard";
+import { useTranslation } from "../../i18n/useTranslation";
 import type { MangaDexManga } from "../../services/mangadex/mangadexTypes";
 
 export type SectionStatus = "loading" | "ready" | "error";
@@ -23,6 +24,7 @@ export function MangaSection({
   layout = "row",
   emptyContent,
 }: MangaSectionProps) {
+  const { t } = useTranslation();
   const containerClass = layout === "grid" ? "manga-grid" : "manga-row";
 
   return (
@@ -51,7 +53,7 @@ export function MangaSection({
       {status === "error" && (
         <div className="section-message">
           <span>⚠️</span>
-          <p>Não foi possível carregar esta seção.</p>
+          <p>{t("section.loadError")}</p>
         </div>
       )}
 

@@ -7,6 +7,7 @@ import {
 } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTranslation } from "../../i18n/useTranslation";
 import {
   getChapterPages,
   getMangaChapters,
@@ -22,6 +23,7 @@ const UI_HIDE_DELAY = 2800;
 export function ReaderPage() {
   const { mangaId, chapterId } = useParams();
   const { user } = useAuth();
+  const { t, language } = useTranslation();
   const navigate = useNavigate();
 
   const [pageUrls, setPageUrls] = useState<string[]>([]);
@@ -57,7 +59,7 @@ export function ReaderPage() {
 
   useEffect(() => {
     if (!chapterId) {
-      setErrorMessage("ID do capítulo não encontrado.");
+      setErrorMessage(t("reader.chapterIdMissing"));
       setIsLoading(false);
       return;
     }
@@ -103,7 +105,7 @@ export function ReaderPage() {
         // Marca que o conteúdo agora pertence a este capítulo.
         setLoadedChapterId(currentChapterId);
       } catch (error) {
-        setErrorMessage("Não foi possível carregar as páginas do capítulo.");
+        setErrorMessage(t("reader.error"));
         console.error(error);
       } finally {
         setIsLoading(false);
@@ -194,7 +196,7 @@ export function ReaderPage() {
 
     async function loadNextChapter() {
       try {
-        const response = await getMangaChapters(currentMangaId);
+        const response = await getMangaChapters(currentMangaId, language);
 
         if (!isActive) {
           return;
@@ -224,7 +226,7 @@ export function ReaderPage() {
     return () => {
       isActive = false;
     };
-  }, [mangaId, chapterId]);
+  }, [mangaId, chapterId, language]);
 
   const goToNextPage = useCallback(() => {
     // Passou da última página: avança automaticamente para o próximo capítulo.
@@ -300,7 +302,7 @@ export function ReaderPage() {
     return (
       <div className="reader-fullscreen-state">
         <div className="spinner spinner--light" />
-        <p>Carregando capítulo...</p>
+        <p>{t("reader.loading")}</p>
       </div>
     );
   }
@@ -309,9 +311,9 @@ export function ReaderPage() {
     return (
       <div className="reader-fullscreen-state">
         <span style={{ fontSize: "2rem" }}>⚠️</span>
-        <p>{errorMessage || "Nenhuma página encontrada para este capítulo."}</p>
+        <p>{errorMessage || t("reader.noPages")}</p>
         <Link className="reader-back" to={backTo}>
-          <span className="back-link__icon">←</span> Voltar
+          <span className="back-link__icon">←</span> {t("common.back")}
         </Link>
       </div>
     );
@@ -329,11 +331,12 @@ export function ReaderPage() {
         }`}
       >
         <Link className="reader-back" to={backTo}>
-          <span className="back-link__icon">←</span> Voltar
+          <span className="back-link__icon">←</span> {t("common.back")}
         </Link>
 
         <span className="reader-counter">
-          Página <strong>{currentPageIndex + 1}</strong> de {pageUrls.length}
+          {t("reader.pageWord")} <strong>{currentPageIndex + 1}</strong>{" "}
+          {t("reader.ofTotal", { total: pageUrls.length })}
         </span>
       </header>
 
@@ -342,7 +345,7 @@ export function ReaderPage() {
           key={currentPageIndex}
           className="reader-page-img"
           src={currentPageUrl}
-          alt={`Página ${currentPageIndex + 1}`}
+          alt={t("reader.pageWord")}
         />
       </div>
 
@@ -352,7 +355,7 @@ export function ReaderPage() {
         }`}
       >
         {isLastPage && !nextChapterId && (
-          <span className="reader-end-note">Fim do capítulo</span>
+          <span className="reader-end-note">{t("reader.endOfChapter")}</span>
         )}
 
         <button
@@ -361,7 +364,7 @@ export function ReaderPage() {
           onClick={goToPreviousPage}
           disabled={isFirstPage}
         >
-          ← Anterior
+          {t("reader.previous")}
         </button>
 
         <button
@@ -370,7 +373,9 @@ export function ReaderPage() {
           onClick={goToNextPage}
           disabled={isLastPage && !nextChapterId}
         >
-          {isLastPage && nextChapterId ? "Próximo capítulo →" : "Próxima →"}
+          {isLastPage && nextChapterId
+            ? t("reader.nextChapter")
+            : t("reader.next")}
         </button>
       </footer>
     </div>

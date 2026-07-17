@@ -1,27 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Sidebar } from "../../components/layout/Sidebar";
 import { MangaCover } from "../../components/MangaCover";
 import { useAuth } from "../../contexts/AuthContext";
+import { LIBRARY_STATUS_LABEL_KEY } from "../../i18n/libraryStatus";
+import type { TranslationKey } from "../../i18n/translations";
+import { useTranslation } from "../../i18n/useTranslation";
 import { resolveCoverImageUrl } from "../../services/mangadex/mangadexHelpers";
+import { getMyLibraryItems } from "../../services/library/libraryApi";
 import {
-  getMyLibraryItems,
-  removeLibraryItem,
-} from "../../services/library/libraryApi";
-import type {
-  LibraryItem,
-  LibraryStatus,
+  LIBRARY_STATUSES,
+  normalizeLibraryStatus,
+  type LibraryItem,
+  type LibraryStatus,
 } from "../../services/library/libraryTypes";
 
-const STATUS_LABELS: Record<LibraryStatus, string> = {
-  reading: "Lendo",
-  completed: "Concluído",
-  planned: "Planejado",
-  paused: "Pausado",
-  dropped: "Abandonado",
-};
+type LibraryTab = "all" | LibraryStatus;
 
-function formatLastRead(lastReadAt: string | null): string | null {
+const LIBRARY_TABS: { key: LibraryTab; labelKey: TranslationKey }[] = [
+  { key: "all", labelKey: "library.tabAll" },
+  ...LIBRARY_STATUSES.map((status) => ({
+    key: status,
+    labelKey: LIBRARY_STATUS_LABEL_KEY[status],
+  })),
+];
+
+function formatLastRead(
+  lastReadAt: string | null,
+  locale: string
+): string | null {
   if (!lastReadAt) {
     return null;
   }
@@ -32,7 +39,7 @@ function formatLastRead(lastReadAt: string | null): string | null {
     return null;
   }
 
-  return date.toLocaleDateString("pt-BR", {
+  return date.toLocaleDateString(locale, {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -41,12 +48,13 @@ function formatLastRead(lastReadAt: string | null): string | null {
 
 export function LibraryPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { t, language } = useTranslation();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<LibraryTab>("all");
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -75,7 +83,7 @@ export function LibraryPage() {
       } catch (error) {
         console.error(error);
         if (isActive) {
-          setErrorMessage("Não foi possível carregar sua biblioteca.");
+          setErrorMessage(t("library.error"));
         }
       } finally {
         if (isActive) {
@@ -91,24 +99,26 @@ export function LibraryPage() {
     };
   }, [user?.id, isAuthLoading]);
 
-  async function handleRemove(mangaId: string) {
-    if (!user) {
-      return;
+  // Agrupa os itens pelas seções oficiais, normalizando status antigos.
+  const groupedItems = useMemo(() => {
+    const groups: Record<LibraryStatus, LibraryItem[]> = {
+      reading: [],
+      planned: [],
+      completed: [],
+      dropped: [],
+    };
+
+    for (const item of items) {
+      groups[normalizeLibraryStatus(item.status)].push(item);
     }
 
-    try {
-      setRemovingId(mangaId);
+    return groups;
+  }, [items]);
 
-      await removeLibraryItem(user.id, mangaId);
+  const locale = language === "en" ? "en-US" : "pt-BR";
 
-      setItems((prev) => prev.filter((item) => item.manga_id !== mangaId));
-    } catch (error) {
-      console.error(error);
-      setErrorMessage("Não foi possível remover o item da biblioteca.");
-    } finally {
-      setRemovingId(null);
-    }
-  }
+  const visibleItems =
+    activeTab === "all" ? items : groupedItems[activeTab];
 
   return (
     <div className="app-shell">
@@ -121,7 +131,7 @@ export function LibraryPage() {
         <button
           type="button"
           className="icon-button"
-          aria-label="Abrir menu"
+          aria-label="Menu"
           onClick={() => setIsSidebarOpen(true)}
         >
           <span className="icon-button__bars" />
@@ -132,27 +142,27 @@ export function LibraryPage() {
 
       <main className="library container">
         <section className="home-welcome">
-          <h1 className="home-welcome__title">Sua biblioteca</h1>
+          <h1 className="home-welcome__title">{t("library.welcomeTitle")}</h1>
           <p className="home-welcome__subtitle">
-            Os mangás que você salvou para ler e acompanhar.
+            {t("library.welcomeSubtitle")}
           </p>
         </section>
 
         {!isAuthenticated ? (
           <div className="empty-state">
             <span className="empty-state__icon">🔒</span>
-            <p className="empty-state__title">Entre para ver sua biblioteca</p>
-            <p className="empty-state__text">
-              Faça login para salvar mangás e sincronizar sua leitura.
+            <p className="empty-state__title">
+              {t("library.loggedOutTitle")}
             </p>
+            <p className="empty-state__text">{t("library.loggedOutText")}</p>
             <Link className="btn btn--primary" to="/login">
-              Entrar
+              {t("auth.login")}
             </Link>
           </div>
         ) : isLoading ? (
           <div className="loading">
             <div className="spinner" />
-            <p className="loading__text">Carregando sua biblioteca...</p>
+            <p className="loading__text">{t("library.loading")}</p>
           </div>
         ) : errorMessage ? (
           <div className="error-message" role="alert">
@@ -162,61 +172,85 @@ export function LibraryPage() {
         ) : items.length === 0 ? (
           <div className="empty-state">
             <span className="empty-state__icon">📚</span>
-            <p className="empty-state__title">Sua biblioteca está vazia</p>
-            <p className="empty-state__text">
-              Explore o catálogo e salve mangás para encontrá-los aqui.
-            </p>
+            <p className="empty-state__title">{t("library.emptyTitle")}</p>
+            <p className="empty-state__text">{t("library.emptyText")}</p>
             <Link className="btn btn--primary" to="/">
-              Explorar mangás
+              {t("library.explore")}
             </Link>
           </div>
         ) : (
-          <div className="manga-grid">
-            {items.map((item) => {
-              const lastRead = formatLastRead(item.last_read_at);
+          <>
+            <nav className="library-tabs" aria-label={t("library.welcomeTitle")}>
+              {LIBRARY_TABS.map((tab) => {
+                const count =
+                  tab.key === "all"
+                    ? items.length
+                    : groupedItems[tab.key].length;
 
-              return (
-                <div className="manga-card library-card" key={item.manga_id}>
-                  <Link
-                    className="library-card__link"
-                    to={`/manga/${item.manga_id}`}
-                  >
-                    <div className="manga-card__cover">
-                      <MangaCover
-                        url={resolveCoverImageUrl(item.cover_url)}
-                        alt={`Capa de ${item.title}`}
-                      />
-                    </div>
-
-                    <div className="manga-card__body">
-                      <span className="status-badge">
-                        {STATUS_LABELS[item.status]}
-                      </span>
-
-                      <h3 className="manga-card__title">{item.title}</h3>
-
-                      <div className="manga-card__meta">
-                        <span>
-                          {lastRead ? `Lido em ${lastRead}` : "Ainda não lido"}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-
+                return (
                   <button
+                    key={tab.key}
                     type="button"
-                    className="btn btn--danger btn--sm btn--block"
-                    onClick={() => handleRemove(item.manga_id)}
-                    disabled={removingId === item.manga_id}
+                    className={`library-tab ${
+                      activeTab === tab.key ? "library-tab--active" : ""
+                    }`}
+                    onClick={() => setActiveTab(tab.key)}
                   >
-                    {removingId === item.manga_id
-                      ? "Removendo..."
-                      : "Remover da biblioteca"}
+                    {t(tab.labelKey)}
+                    <span className="library-tab__count">{count}</span>
                   </button>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </nav>
+
+            {visibleItems.length === 0 ? (
+              <p className="library-section__empty">
+                {t("library.sectionEmpty")}
+              </p>
+            ) : (
+              <div className="manga-grid">
+                {visibleItems.map((item) => {
+                  const status = normalizeLibraryStatus(item.status);
+                  const lastRead = formatLastRead(item.last_read_at, locale);
+
+                  return (
+                    <div
+                      className="manga-card library-card"
+                      key={item.manga_id}
+                    >
+                      <Link
+                        className="library-card__link"
+                        to={`/manga/${item.manga_id}`}
+                      >
+                        <div className="manga-card__cover">
+                          <MangaCover
+                            url={resolveCoverImageUrl(item.cover_url)}
+                            alt={item.title}
+                          />
+                        </div>
+
+                        <div className="manga-card__body">
+                          <span className="status-badge">
+                            {t(LIBRARY_STATUS_LABEL_KEY[status])}
+                          </span>
+
+                          <h3 className="manga-card__title">{item.title}</h3>
+
+                          <div className="manga-card__meta">
+                            <span>
+                              {lastRead
+                                ? t("library.readOn", { date: lastRead })
+                                : t("library.notReadYet")}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>

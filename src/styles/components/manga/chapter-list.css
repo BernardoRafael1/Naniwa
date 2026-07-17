@@ -45,6 +45,12 @@
   color: var(--color-text-muted);
 }
 
+.chapter-item__resume {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-primary-contrast);
+}
+
 .chapter-item__action {
   flex: 0 0 auto;
 }

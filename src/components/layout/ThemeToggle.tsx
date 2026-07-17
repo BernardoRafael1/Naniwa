@@ -1,3 +1,4 @@
+import { useTranslation } from "../../i18n/useTranslation";
 import type { Theme } from "../../lib/theme";
 
 type ThemeToggleProps = {
@@ -40,6 +41,7 @@ const MoonIcon = (
 
 /** Alternador de tema usado no rodapé do menu lateral. */
 export function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
+  const { t } = useTranslation();
   const isDark = theme === "dark";
 
   return (
@@ -51,7 +53,7 @@ export function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
     >
       <span className="theme-toggle__icon">{isDark ? MoonIcon : SunIcon}</span>
       <span className="theme-toggle__label">
-        {isDark ? "Modo escuro" : "Modo claro"}
+        {isDark ? t("theme.dark") : t("theme.light")}
       </span>
       <span className={`theme-toggle__switch ${isDark ? "is-on" : ""}`}>
         <span className="theme-toggle__knob" />

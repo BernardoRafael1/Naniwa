@@ -58,6 +58,21 @@ export async function getRecentReadingProgress(
   return (data as ReadingProgress[] | null) ?? [];
 }
 
+export async function removeMangaProgress(
+  userId: string,
+  mangaId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("reading_progress")
+    .delete()
+    .eq("user_id", userId)
+    .eq("manga_id", mangaId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function upsertReadingProgress(
   userId: string,
   input: UpsertReadingProgressInput

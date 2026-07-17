@@ -1,10 +1,12 @@
 import { type FormEvent, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTranslation } from "../../i18n/useTranslation";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { login, isAuthenticated, isLoading } = useAuth();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,7 +18,7 @@ export function LoginPage() {
     return (
       <main className="auth-page">
         <section className="auth-card">
-          <p className="auth-loading">Carregando sessão...</p>
+          <p className="auth-loading">{t("auth.loadingSession")}</p>
         </section>
       </main>
     );
@@ -43,7 +45,7 @@ export function LoginPage() {
       });
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Não foi possível entrar.";
+        error instanceof Error ? error.message : t("login.error");
 
       setErrorMessage(message);
     } finally {
@@ -56,16 +58,16 @@ export function LoginPage() {
       <section className="auth-card">
         <div className="auth-brand">
           <span className="auth-brand-badge">Naniwa</span>
-          <h1>Entrar na sua conta</h1>
-          <p>Continue sua leitura e acesse seu perfil local.</p>
+          <h1>{t("login.title")}</h1>
+          <p>{t("login.subtitle")}</p>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-field">
-            <span>Email</span>
+            <span>{t("login.emailLabel")}</span>
             <input
               type="email"
-              placeholder="seuemail@exemplo.com"
+              placeholder={t("login.emailPlaceholder")}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
@@ -73,10 +75,10 @@ export function LoginPage() {
           </label>
 
           <label className="auth-field">
-            <span>Senha</span>
+            <span>{t("login.passwordLabel")}</span>
             <input
               type="password"
-              placeholder="Digite sua senha"
+              placeholder={t("login.passwordPlaceholder")}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
@@ -90,16 +92,17 @@ export function LoginPage() {
             type="submit"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Entrando..." : "Entrar"}
+            {isSubmitting ? t("login.submitting") : t("login.submit")}
           </button>
         </form>
 
         <p className="auth-alt">
-          Ainda não tem conta? <Link to="/register">Criar conta</Link>
+          {t("login.noAccount")}{" "}
+          <Link to="/register">{t("login.createAccount")}</Link>
         </p>
 
         <Link className="auth-back" to="/">
-          Voltar para o início
+          {t("common.backToHome")}
         </Link>
       </section>
     </main>

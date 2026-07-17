@@ -8,7 +8,10 @@ import {
   type SectionStatus,
 } from "../../components/manga/MangaSection";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTranslation } from "../../i18n/useTranslation";
+import type { TranslationKey } from "../../i18n/translations";
 import {
+  getMangaChapters,
   getMangaDetails,
   getMangaList,
   searchMangaByTitle,
@@ -19,11 +22,18 @@ import {
   resolveCoverImageUrl,
 } from "../../services/mangadex/mangadexHelpers";
 import type { MangaDexManga } from "../../services/mangadex/mangadexTypes";
-import { getRecentReadingProgress } from "../../services/progress/readingProgressApi";
+import { getMyLibraryItems } from "../../services/library/libraryApi";
+import { normalizeLibraryStatus } from "../../services/library/libraryTypes";
+import {
+  getMangaProgress,
+  getRecentReadingProgress,
+  removeMangaProgress,
+} from "../../services/progress/readingProgressApi";
 
 type ContinueItem = {
   mangaId: string;
   chapterId: string;
+  chapter: string | null;
   page: number;
   title: string;
   coverUrl: string | null;
@@ -38,32 +48,32 @@ type SectionState = {
 
 const SECTION_CONFIG: {
   key: SectionKey;
-  title: string;
-  subtitle: string;
+  titleKey: TranslationKey;
+  subtitleKey: TranslationKey;
   order: Record<string, string>;
 }[] = [
   {
     key: "destaque",
-    title: "Mangás em destaque",
-    subtitle: "Os títulos mais seguidos do momento",
+    titleKey: "section.featured.title",
+    subtitleKey: "section.featured.subtitle",
     order: { followedCount: "desc" },
   },
   {
     key: "lancamentos",
-    title: "Últimos lançamentos",
-    subtitle: "Capítulos publicados recentemente",
+    titleKey: "section.latest.title",
+    subtitleKey: "section.latest.subtitle",
     order: { latestUploadedChapter: "desc" },
   },
   {
     key: "populares",
-    title: "Populares",
-    subtitle: "Bem avaliados pela comunidade",
+    titleKey: "section.popular.title",
+    subtitleKey: "section.popular.subtitle",
     order: { rating: "desc" },
   },
   {
     key: "recomendados",
-    title: "Recomendados",
-    subtitle: "Novidades que chegaram ao catálogo",
+    titleKey: "section.recommended.title",
+    subtitleKey: "section.recommended.subtitle",
     order: { createdAt: "desc" },
   },
 ];
@@ -77,6 +87,7 @@ const INITIAL_SECTIONS: Record<SectionKey, SectionState> = {
 
 export function HomePage() {
   const { user, isLoading: isAuthLoading } = useAuth();
+  const { t, language } = useTranslation();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -140,9 +151,21 @@ export function HomePage() {
       try {
         setIsContinueLoading(true);
 
-        const progress = await getRecentReadingProgress(userId, 12);
+        const [progress, libraryItems] = await Promise.all([
+          getRecentReadingProgress(userId, 20),
+          getMyLibraryItems(userId),
+        ]);
 
-        // Mantém apenas o capítulo mais recente por mangá.
+        // Mangás concluídos na biblioteca não aparecem em "continuar lendo".
+        const completedMangaIds = new Set(
+          libraryItems
+            .filter(
+              (item) => normalizeLibraryStatus(item.status) === "completed"
+            )
+            .map((item) => item.manga_id)
+        );
+
+        // Mantém apenas o capítulo mais recente por mangá, sem os concluídos.
         const seen = new Set<string>();
         const recent = progress
           .filter((entry) => {
@@ -152,15 +175,43 @@ export function HomePage() {
             seen.add(entry.manga_id);
             return true;
           })
+          .filter((entry) => !completedMangaIds.has(entry.manga_id))
           .slice(0, 6);
 
         const results = await Promise.allSettled(
           recent.map(async (entry) => {
-            const details = await getMangaDetails(entry.manga_id);
+            const [details, chaptersResponse, mangaProgress] =
+              await Promise.all([
+                getMangaDetails(entry.manga_id),
+                getMangaChapters(entry.manga_id, language),
+                getMangaProgress(userId, entry.manga_id),
+              ]);
+
+            // Se todos os capítulos já foram lidos, não é "continuar lendo".
+            const chapterIds = chaptersResponse.data.map(
+              (chapter) => chapter.id
+            );
+            const readChapterIds = new Set(
+              mangaProgress
+                .filter((item) => item.completed)
+                .map((item) => item.chapter_id)
+            );
+            const allChaptersRead =
+              chapterIds.length > 0 &&
+              chapterIds.every((id) => readChapterIds.has(id));
+
+            if (allChaptersRead) {
+              return null;
+            }
+
+            const currentChapter = chaptersResponse.data.find(
+              (chapter) => chapter.id === entry.chapter_id
+            );
 
             return {
               mangaId: entry.manga_id,
               chapterId: entry.chapter_id,
+              chapter: currentChapter?.attributes.chapter ?? null,
               page: entry.page,
               title: getMangaTitle(details.data),
               coverUrl: resolveCoverImageUrl(getCoverImageUrl(details.data)),
@@ -174,10 +225,13 @@ export function HomePage() {
 
         const items = results
           .filter(
-            (result): result is PromiseFulfilledResult<ContinueItem> =>
+            (
+              result
+            ): result is PromiseFulfilledResult<ContinueItem | null> =>
               result.status === "fulfilled"
           )
-          .map((result) => result.value);
+          .map((result) => result.value)
+          .filter((value): value is ContinueItem => value !== null);
 
         setContinueItems(items);
       } catch (error) {
@@ -197,7 +251,24 @@ export function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, isAuthLoading]);
+  }, [user?.id, isAuthLoading, language]);
+
+  async function handleDismissContinue(mangaId: string) {
+    if (!user) {
+      return;
+    }
+
+    const previousItems = continueItems;
+    setContinueItems((prev) => prev.filter((it) => it.mangaId !== mangaId));
+
+    try {
+      await removeMangaProgress(user.id, mangaId);
+    } catch (error) {
+      console.error(error);
+      // Restaura a lista caso a exclusão falhe.
+      setContinueItems(previousItems);
+    }
+  }
 
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -214,7 +285,7 @@ export function HomePage() {
       const response = await searchMangaByTitle(searchTerm, 12);
       setSearchResults(response.data);
     } catch (error) {
-      setSearchError("Não foi possível buscar mangás no momento.");
+      setSearchError(t("home.searchError"));
       console.error(error);
     } finally {
       setIsSearching(false);
@@ -243,12 +314,12 @@ export function HomePage() {
             <input
               className="input"
               type="text"
-              placeholder="Buscar mangá..."
+              placeholder={t("home.searchPlaceholder")}
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
             />
             <button className="btn btn--primary" type="submit">
-              Buscar
+              {t("home.searchButton")}
             </button>
           </div>
         </form>
@@ -259,19 +330,18 @@ export function HomePage() {
       <main className="home container">
         <section className="home-welcome">
           <h1 className="home-welcome__title">
-            Bem-vindo ao <span className="accent">Naniwa</span>
+            {t("home.welcomePrefix")} <span className="accent">Naniwa</span>
           </h1>
-          <p className="home-welcome__subtitle">
-            Explore milhares de mangás, descubra novos títulos e continue suas
-            leituras — tudo em um só lugar.
-          </p>
+          <p className="home-welcome__subtitle">{t("home.welcomeSubtitle")}</p>
         </section>
 
         {/* Resultados da busca aparecem apenas após pesquisar. */}
         {hasSearched && (
           <section className="manga-section">
             <div className="manga-section__header">
-              <h2 className="manga-section__title">Resultados da busca</h2>
+              <h2 className="manga-section__title">
+                {t("home.searchResults")}
+              </h2>
             </div>
 
             {isSearching ? (
@@ -294,10 +364,10 @@ export function HomePage() {
             ) : searchResults.length === 0 ? (
               <div className="empty-state">
                 <span className="empty-state__icon">🔍</span>
-                <p className="empty-state__title">Nenhum resultado encontrado</p>
-                <p className="empty-state__text">
-                  Tente buscar por outro título ou verifique a ortografia.
+                <p className="empty-state__title">
+                  {t("home.noResultsTitle")}
                 </p>
+                <p className="empty-state__text">{t("home.noResultsText")}</p>
               </div>
             ) : (
               <div className="manga-grid">
@@ -313,7 +383,9 @@ export function HomePage() {
         {(!user || isContinueLoading || continueItems.length > 0) && (
           <section className="manga-section">
             <div className="manga-section__header">
-              <h2 className="manga-section__title">Continuar lendo</h2>
+              <h2 className="manga-section__title">
+                {t("home.continueReading")}
+              </h2>
             </div>
 
             {!user ? (
@@ -336,11 +408,10 @@ export function HomePage() {
                 </span>
                 <div>
                   <p className="continue-empty__title">
-                    Entre para retomar suas leituras.
+                    {t("home.continueLoggedOutTitle")}
                   </p>
                   <p className="continue-empty__text">
-                    Seu progresso fica salvo online e aparece aqui para
-                    continuar de onde parou.
+                    {t("home.continueLoggedOutText")}
                   </p>
                 </div>
               </div>
@@ -359,37 +430,50 @@ export function HomePage() {
             ) : (
               <div className="manga-row">
                 {continueItems.map((item) => (
-                  <Link
-                    className="manga-card"
-                    to={`/manga/${item.mangaId}/reader/${item.chapterId}`}
-                    key={item.mangaId}
-                  >
-                    <div className="manga-card__cover">
-                      <MangaCover
-                        url={item.coverUrl}
-                        alt={`Capa de ${item.title}`}
-                      />
-                    </div>
-
-                    <div className="manga-card__body">
-                      <h3 className="manga-card__title">{item.title}</h3>
-
-                      <div className="manga-card__meta">
-                        <span>Continuar na página {item.page}</span>
+                  <div className="manga-card continue-card" key={item.mangaId}>
+                    <Link
+                      className="library-card__link"
+                      to={`/manga/${item.mangaId}/reader/${item.chapterId}`}
+                    >
+                      <div className="manga-card__cover">
+                        <MangaCover url={item.coverUrl} alt={item.title} />
                       </div>
-                    </div>
-                  </Link>
+
+                      <div className="manga-card__body">
+                        <h3 className="manga-card__title">{item.title}</h3>
+
+                        <div className="manga-card__meta">
+                          <span>
+                            {item.chapter
+                              ? t("home.continueChapterPage", {
+                                  chapter: item.chapter,
+                                  page: item.page,
+                                })
+                              : t("home.continueOnPage", { page: item.page })}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+
+                    <button
+                      type="button"
+                      className="continue-card__dismiss"
+                      onClick={() => handleDismissContinue(item.mangaId)}
+                    >
+                      {t("home.dontContinue")}
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
           </section>
         )}
 
-        {SECTION_CONFIG.map(({ key, title, subtitle }) => (
+        {SECTION_CONFIG.map(({ key, titleKey, subtitleKey }) => (
           <MangaSection
             key={key}
-            title={title}
-            subtitle={subtitle}
+            title={t(titleKey)}
+            subtitle={t(subtitleKey)}
             status={sections[key].status}
             mangas={sections[key].mangas}
             layout="row"

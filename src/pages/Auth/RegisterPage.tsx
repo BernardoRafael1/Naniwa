@@ -1,10 +1,12 @@
 import { type FormEvent, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTranslation } from "../../i18n/useTranslation";
 
 export function RegisterPage() {
   const navigate = useNavigate();
   const { register, isAuthenticated, isLoading } = useAuth();
+  const { t } = useTranslation();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -17,7 +19,7 @@ export function RegisterPage() {
     return (
       <main className="auth-page">
         <section className="auth-card">
-          <p className="auth-loading">Carregando sessão...</p>
+          <p className="auth-loading">{t("auth.loadingSession")}</p>
         </section>
       </main>
     );
@@ -45,9 +47,7 @@ export function RegisterPage() {
       });
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Não foi possível criar sua conta.";
+        error instanceof Error ? error.message : t("register.error");
 
       setErrorMessage(message);
     } finally {
@@ -60,16 +60,16 @@ export function RegisterPage() {
       <section className="auth-card">
         <div className="auth-brand">
           <span className="auth-brand-badge">Naniwa</span>
-          <h1>Criar conta</h1>
-          <p>Crie um perfil local para organizar sua experiência.</p>
+          <h1>{t("register.title")}</h1>
+          <p>{t("register.subtitle")}</p>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-field">
-            <span>Nome</span>
+            <span>{t("register.nameLabel")}</span>
             <input
               type="text"
-              placeholder="Seu nome"
+              placeholder={t("register.namePlaceholder")}
               value={name}
               onChange={(event) => setName(event.target.value)}
               required
@@ -77,10 +77,10 @@ export function RegisterPage() {
           </label>
 
           <label className="auth-field">
-            <span>Email</span>
+            <span>{t("login.emailLabel")}</span>
             <input
               type="email"
-              placeholder="seuemail@exemplo.com"
+              placeholder={t("login.emailPlaceholder")}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
@@ -88,10 +88,10 @@ export function RegisterPage() {
           </label>
 
           <label className="auth-field">
-            <span>Senha</span>
+            <span>{t("login.passwordLabel")}</span>
             <input
               type="password"
-              placeholder="Mínimo de 6 caracteres"
+              placeholder={t("register.passwordPlaceholder")}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               minLength={6}
@@ -106,16 +106,17 @@ export function RegisterPage() {
             type="submit"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Criando conta..." : "Criar conta"}
+            {isSubmitting ? t("register.submitting") : t("register.submit")}
           </button>
         </form>
 
         <p className="auth-alt">
-          Já tem uma conta? <Link to="/login">Entrar</Link>
+          {t("register.haveAccount")}{" "}
+          <Link to="/login">{t("register.login")}</Link>
         </p>
 
         <Link className="auth-back" to="/">
-          Voltar para o início
+          {t("common.backToHome")}
         </Link>
       </section>
     </main>

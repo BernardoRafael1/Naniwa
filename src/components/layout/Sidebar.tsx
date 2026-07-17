@@ -1,6 +1,8 @@
 import { useEffect, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTranslation } from "../../i18n/useTranslation";
+import type { TranslationKey } from "../../i18n/translations";
 import { useTheme } from "../../hooks/useTheme";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -87,18 +89,18 @@ const LogoutIcon = (
 );
 
 type NavItem = {
-  label: string;
+  labelKey: TranslationKey;
   icon: ReactNode;
   to?: string;
   disabled?: boolean;
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Início", icon: HomeIcon, to: "/" },
-  { label: "Biblioteca", icon: LibraryIcon, to: "/library" },
-  { label: "Perfil", icon: ProfileIcon, to: "/profile" },
-  { label: "Pesquisa avançada", icon: SearchIcon, disabled: true },
-  { label: "Comunidade", icon: CommunityIcon, disabled: true },
+  { labelKey: "nav.home", icon: HomeIcon, to: "/" },
+  { labelKey: "nav.library", icon: LibraryIcon, to: "/library" },
+  { labelKey: "nav.profile", icon: ProfileIcon, to: "/profile" },
+  { labelKey: "nav.advancedSearch", icon: SearchIcon, disabled: true },
+  { labelKey: "nav.community", icon: CommunityIcon, disabled: true },
 ];
 
 type SidebarProps = {
@@ -109,6 +111,7 @@ type SidebarProps = {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
   const { user, isAuthenticated, logout } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   function handleLogout() {
@@ -154,27 +157,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             if (item.disabled || !item.to) {
               return (
                 <button
-                  key={item.label}
+                  key={item.labelKey}
                   type="button"
                   className="sidebar__link"
                   disabled
                 >
                   <span className="sidebar__link-icon">{item.icon}</span>
-                  <span>{item.label}</span>
-                  <span className="sidebar__soon">em breve</span>
+                  <span>{t(item.labelKey)}</span>
+                  <span className="sidebar__soon">{t("nav.soon")}</span>
                 </button>
               );
             }
 
             return (
               <Link
-                key={item.label}
+                key={item.labelKey}
                 to={item.to}
                 className="sidebar__link"
                 onClick={onClose}
               >
                 <span className="sidebar__link-icon">{item.icon}</span>
-                <span>{item.label}</span>
+                <span>{t(item.labelKey)}</span>
               </Link>
             );
           })}
@@ -200,7 +203,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   onClick={handleLogout}
                 >
                   <span className="sidebar__link-icon">{LogoutIcon}</span>
-                  <span>Sair</span>
+                  <span>{t("auth.logout")}</span>
                 </button>
               </>
             ) : (
@@ -211,7 +214,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   onClick={onClose}
                 >
                   <span className="sidebar__link-icon">{LoginIcon}</span>
-                  <span>Entrar</span>
+                  <span>{t("auth.login")}</span>
                 </Link>
 
                 <Link
@@ -220,7 +223,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   onClick={onClose}
                 >
                   <span className="sidebar__link-icon">{RegisterIcon}</span>
-                  <span>Criar conta</span>
+                  <span>{t("auth.register")}</span>
                 </Link>
               </>
             )}

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { MangaCover } from "../MangaCover";
+import { useTranslation } from "../../i18n/useTranslation";
 import {
   getCoverImageUrl,
   getMangaTitle,
@@ -24,6 +25,7 @@ type MangaCardProps = {
 };
 
 export function MangaCard({ manga }: MangaCardProps) {
+  const { t } = useTranslation();
   const title = getMangaTitle(manga);
   const coverUrl = resolveCoverImageUrl(getCoverImageUrl(manga));
   const status = manga.attributes.status;
@@ -40,7 +42,7 @@ export function MangaCard({ manga }: MangaCardProps) {
         <h3 className="manga-card__title">{title}</h3>
 
         <div className="manga-card__meta">
-          <span>{manga.attributes.year ?? "Ano —"}</span>
+          <span>{manga.attributes.year ?? t("card.yearUnknown")}</span>
         </div>
       </div>
     </Link>

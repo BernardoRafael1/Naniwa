@@ -2,8 +2,6 @@ export type ThemePreference = "system" | "light" | "dark";
 export type ReaderMode = "single-page" | "continuous";
 export type ReaderDirection = "ltr" | "rtl";
 
-export const DEFAULT_LANGUAGE = "pt-br";
-
 export type Profile = {
   id: string;
   display_name: string | null;

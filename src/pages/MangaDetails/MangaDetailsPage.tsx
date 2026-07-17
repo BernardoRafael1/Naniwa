@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { MangaCover } from "../../components/MangaCover";
 import { useAuth } from "../../contexts/AuthContext";
-import { getMangaProgress } from "../../services/progress/readingProgressApi";
+import { LIBRARY_STATUS_LABEL_KEY } from "../../i18n/libraryStatus";
+import { useTranslation } from "../../i18n/useTranslation";
+import {
+  getMangaProgress,
+  upsertReadingProgress,
+} from "../../services/progress/readingProgressApi";
 import {
   getMangaChapters,
   getMangaDetails,
@@ -21,13 +26,20 @@ import type {
 import {
   getLibraryItem,
   removeLibraryItem,
+  updateLibraryItem,
   upsertLibraryItem,
 } from "../../services/library/libraryApi";
-import type { LibraryItem } from "../../services/library/libraryTypes";
+import {
+  LIBRARY_STATUSES,
+  normalizeLibraryStatus,
+  type LibraryItem,
+  type LibraryStatus,
+} from "../../services/library/libraryTypes";
 
 export function MangaDetailsPage() {
   const { mangaId } = useParams();
   const { user, isAuthenticated } = useAuth();
+  const { t, language } = useTranslation();
 
   const [manga, setManga] = useState<MangaDexManga | null>(null);
   const [chapters, setChapters] = useState<MangaDexChapter[]>([]);
@@ -38,13 +50,18 @@ export function MangaDetailsPage() {
   const [isTogglingLibrary, setIsTogglingLibrary] = useState(false);
   const [libraryError, setLibraryError] = useState("");
   const [justAdded, setJustAdded] = useState(false);
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   const [readChapterIds, setReadChapterIds] = useState<Set<string>>(new Set());
+  // Página onde o usuário parou em cada capítulo ainda não concluído.
+  const [resumeByChapter, setResumeByChapter] = useState<
+    Record<string, number>
+  >({});
 
   const justAddedTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!mangaId) {
-      setErrorMessage("ID do mangá não encontrado.");
+      setErrorMessage(t("details.idMissing"));
       setIsLoading(false);
       return;
     }
@@ -58,13 +75,13 @@ export function MangaDetailsPage() {
 
         const [mangaDetailsResponse, chaptersResponse] = await Promise.all([
           getMangaDetails(currentMangaId),
-          getMangaChapters(currentMangaId),
+          getMangaChapters(currentMangaId, language),
         ]);
 
         setManga(mangaDetailsResponse.data);
         setChapters(chaptersResponse.data);
       } catch (error) {
-        setErrorMessage("Não foi possível carregar os detalhes do mangá.");
+        setErrorMessage(t("details.error"));
         console.error(error);
       } finally {
         setIsLoading(false);
@@ -72,13 +89,14 @@ export function MangaDetailsPage() {
     }
 
     loadMangaDetails();
-  }, [mangaId]);
+  }, [mangaId, language]);
 
   // Carrega o estado de biblioteca e os capítulos já lidos do usuário logado.
   useEffect(() => {
     if (!mangaId || !user) {
       setLibraryItem(null);
       setReadChapterIds(new Set());
+      setResumeByChapter({});
       return;
     }
 
@@ -105,6 +123,15 @@ export function MangaDetailsPage() {
               .map((entry) => entry.chapter_id)
           )
         );
+
+        // Guarda a página de retomada dos capítulos ainda não concluídos.
+        const resume: Record<string, number> = {};
+        for (const entry of progress) {
+          if (!entry.completed && entry.page > 1) {
+            resume[entry.chapter_id] = entry.page;
+          }
+        }
+        setResumeByChapter(resume);
       } catch (error) {
         console.error(error);
       }
@@ -126,38 +153,69 @@ export function MangaDetailsPage() {
     };
   }, []);
 
-  async function handleAddToLibrary() {
+  // Marca todos os capítulos do mangá como lidos (usado ao concluir).
+  async function markAllChaptersRead(userId: string, currentMangaId: string) {
+    await Promise.allSettled(
+      chapters.map((chapter) => {
+        const total =
+          chapter.attributes.pages > 0 ? chapter.attributes.pages : 1;
+
+        return upsertReadingProgress(userId, {
+          manga_id: currentMangaId,
+          chapter_id: chapter.id,
+          chapter_title: chapter.attributes.title ?? null,
+          page: total,
+          total_pages: total,
+          completed: true,
+        });
+      })
+    );
+  }
+
+  async function handleChooseStatus(status: LibraryStatus) {
     if (!user || !manga) {
       return;
     }
+
+    setStatusMenuOpen(false);
 
     try {
       setIsTogglingLibrary(true);
       setLibraryError("");
 
-      const item = await upsertLibraryItem(user.id, {
-        manga_id: manga.id,
-        title: getMangaTitle(manga),
-        cover_url: getCoverImageUrl(manga, ""),
-        status: "planned",
-      });
+      const wasInLibrary = Boolean(libraryItem);
+
+      const item = wasInLibrary
+        ? await updateLibraryItem(user.id, manga.id, { status })
+        : await upsertLibraryItem(user.id, {
+            manga_id: manga.id,
+            title: getMangaTitle(manga),
+            cover_url: getCoverImageUrl(manga, ""),
+            status,
+          });
 
       setLibraryItem(item);
 
-      // Mostra a confirmação por alguns segundos e depois a esconde.
-      setJustAdded(true);
-      if (justAddedTimeoutRef.current !== null) {
-        window.clearTimeout(justAddedTimeoutRef.current);
+      // Ao concluir, marca todos os capítulos como lidos automaticamente.
+      if (status === "completed") {
+        await markAllChaptersRead(user.id, manga.id);
+        setReadChapterIds(new Set(chapters.map((chapter) => chapter.id)));
+        setResumeByChapter({});
       }
-      justAddedTimeoutRef.current = window.setTimeout(() => {
-        setJustAdded(false);
-      }, 3000);
+
+      if (!wasInLibrary) {
+        // Mostra a confirmação por alguns segundos e depois a esconde.
+        setJustAdded(true);
+        if (justAddedTimeoutRef.current !== null) {
+          window.clearTimeout(justAddedTimeoutRef.current);
+        }
+        justAddedTimeoutRef.current = window.setTimeout(() => {
+          setJustAdded(false);
+        }, 3000);
+      }
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Não foi possível salvar na biblioteca.";
-      setLibraryError(message);
+      console.error(error);
+      setLibraryError(t("library.saveError"));
     } finally {
       setIsTogglingLibrary(false);
     }
@@ -168,6 +226,8 @@ export function MangaDetailsPage() {
       return;
     }
 
+    setStatusMenuOpen(false);
+
     try {
       setIsTogglingLibrary(true);
       setLibraryError("");
@@ -177,11 +237,8 @@ export function MangaDetailsPage() {
       setLibraryItem(null);
       setJustAdded(false);
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Não foi possível remover da biblioteca.";
-      setLibraryError(message);
+      console.error(error);
+      setLibraryError(t("library.removeErrorDetails"));
     } finally {
       setIsTogglingLibrary(false);
     }
@@ -193,7 +250,7 @@ export function MangaDetailsPage() {
         <main className="details container">
           <div className="loading">
             <div className="spinner" />
-            <p className="loading__text">Carregando detalhes do mangá...</p>
+            <p className="loading__text">{t("details.loading")}</p>
           </div>
         </main>
       </div>
@@ -205,13 +262,13 @@ export function MangaDetailsPage() {
       <div className="app-shell">
         <main className="details container">
           <Link className="back-link details__back" to="/">
-            <span className="back-link__icon">←</span> Voltar
+            <span className="back-link__icon">←</span> {t("common.back")}
           </Link>
 
           <div className="error-message" role="alert">
             <span className="error-message__icon">⚠️</span>
             <p className="error-message__text">
-              {errorMessage || "Mangá não encontrado."}
+              {errorMessage || t("details.notFound")}
             </p>
           </div>
         </main>
@@ -222,13 +279,17 @@ export function MangaDetailsPage() {
   const title = getMangaTitle(manga);
   const description = getLocalizedText(
     manga.attributes.description,
-    "Sem sinopse disponível."
+    t("details.noSynopsis")
   );
   const authors = getRelationshipNames(manga.relationships, "author");
   const artists = getRelationshipNames(manga.relationships, "artist");
   // URL canônica (para salvar na biblioteca) e a resolvida (para exibir).
   const rawCoverUrl = getCoverImageUrl(manga, "");
   const coverUrl = resolveCoverImageUrl(rawCoverUrl);
+
+  const currentStatus: LibraryStatus = libraryItem
+    ? normalizeLibraryStatus(libraryItem.status)
+    : "planned";
 
   const tags = manga.attributes.tags.map((tag) =>
     getLocalizedText(tag.attributes.name)
@@ -238,12 +299,12 @@ export function MangaDetailsPage() {
     <div className="app-shell">
       <main className="details container">
         <Link className="back-link details__back" to="/">
-          <span className="back-link__icon">←</span> Voltar para a busca
+          <span className="back-link__icon">←</span> {t("common.backToSearch")}
         </Link>
 
         <header className="details-header">
           <div className="details-cover">
-            <MangaCover url={coverUrl} alt={`Capa de ${title}`} />
+            <MangaCover url={coverUrl} alt={title} />
           </div>
 
           <div className="details-info">
@@ -257,7 +318,10 @@ export function MangaDetailsPage() {
                   </>
                 )}
                 {artists && artists !== authors && (
-                  <> · Arte por <strong>{artists}</strong></>
+                  <>
+                    {" "}
+                    · {t("details.artBy")} <strong>{artists}</strong>
+                  </>
                 )}
               </p>
             )}
@@ -276,21 +340,23 @@ export function MangaDetailsPage() {
 
             <div className="details-meta-grid">
               <div className="meta-block">
-                <div className="meta-block__label">Ano</div>
+                <div className="meta-block__label">{t("details.year")}</div>
                 <div className="meta-block__value">
                   {manga.attributes.year ?? "—"}
                 </div>
               </div>
 
               <div className="meta-block">
-                <div className="meta-block__label">Status</div>
+                <div className="meta-block__label">{t("details.status")}</div>
                 <div className="meta-block__value">
                   {manga.attributes.status}
                 </div>
               </div>
 
               <div className="meta-block">
-                <div className="meta-block__label">Demografia</div>
+                <div className="meta-block__label">
+                  {t("details.demographic")}
+                </div>
                 <div className="meta-block__value">
                   {manga.attributes.publicationDemographic ?? "—"}
                 </div>
@@ -298,34 +364,78 @@ export function MangaDetailsPage() {
             </div>
 
             {isAuthenticated && (
-              <div className="details-actions">
-                {libraryItem ? (
-                  <>
-                    <button
-                      type="button"
-                      className="btn btn--danger"
-                      onClick={handleRemoveFromLibrary}
-                      disabled={isTogglingLibrary}
-                    >
-                      {isTogglingLibrary
-                        ? "Removendo..."
-                        : "Remover da biblioteca"}
-                    </button>
-                    {justAdded && (
-                      <span className="details-actions__saved">
-                        ✓ Adicionado à biblioteca
-                      </span>
-                    )}
-                  </>
-                ) : (
+              <div className="details-library">
+                <div className="library-picker">
                   <button
                     type="button"
-                    className="btn btn--primary"
-                    onClick={handleAddToLibrary}
+                    className={`btn library-picker__toggle ${
+                      libraryItem ? "btn--secondary" : "btn--primary"
+                    }`}
+                    onClick={() => setStatusMenuOpen((open) => !open)}
                     disabled={isTogglingLibrary}
                   >
-                    {isTogglingLibrary ? "Salvando..." : "Salvar na biblioteca"}
+                    {libraryItem
+                      ? `${t("library.inLibrary")} · ${t(
+                          LIBRARY_STATUS_LABEL_KEY[currentStatus]
+                        )}`
+                      : t("library.addToLibrary")}
+                    <span className="library-picker__caret" aria-hidden="true">
+                      ▾
+                    </span>
                   </button>
+
+                  {statusMenuOpen && (
+                    <>
+                      <button
+                        type="button"
+                        className="library-picker__backdrop"
+                        aria-label=""
+                        onClick={() => setStatusMenuOpen(false)}
+                      />
+                      <div className="library-picker__menu" role="menu">
+                        {LIBRARY_STATUSES.map((status) => {
+                          const isSelected =
+                            Boolean(libraryItem) && currentStatus === status;
+
+                          return (
+                            <button
+                              key={status}
+                              type="button"
+                              role="menuitem"
+                              className={`library-picker__option ${
+                                isSelected ? "is-selected" : ""
+                              }`}
+                              onClick={() => handleChooseStatus(status)}
+                            >
+                              <span>{t(LIBRARY_STATUS_LABEL_KEY[status])}</span>
+                              {isSelected && (
+                                <span className="library-picker__check">✓</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {libraryItem && (
+                  <button
+                    type="button"
+                    className="btn btn--danger"
+                    onClick={handleRemoveFromLibrary}
+                    disabled={isTogglingLibrary}
+                  >
+                    {isTogglingLibrary
+                      ? t("common.removing")
+                      : t("library.removeFromLibrary")}
+                  </button>
+                )}
+
+                {justAdded && (
+                  <span className="details-actions__saved">
+                    ✓ {t("library.added")}
+                  </span>
                 )}
               </div>
             )}
@@ -340,22 +450,24 @@ export function MangaDetailsPage() {
 
         <section className="details-section">
           <h2 className="details-section__title">
-            Capítulos
+            {t("details.chapters")}
             <span className="count-pill">{chapters.length}</span>
           </h2>
 
           {chapters.length === 0 ? (
             <div className="empty-state">
               <span className="empty-state__icon">📭</span>
-              <p className="empty-state__title">Nenhum capítulo disponível</p>
-              <p className="empty-state__text">
-                Não encontramos capítulos em português para este mangá.
+              <p className="empty-state__title">
+                {t("details.noChaptersTitle")}
               </p>
+              <p className="empty-state__text">{t("details.noChaptersText")}</p>
             </div>
           ) : (
             <ul className="chapter-list">
               {chapters.map((chapter) => {
                 const isRead = readChapterIds.has(chapter.id);
+                const pageCount = chapter.attributes.pages;
+                const resumePage = resumeByChapter[chapter.id];
 
                 return (
                   <li
@@ -366,16 +478,23 @@ export function MangaDetailsPage() {
                   >
                     <div className="chapter-item__info">
                       <span className="chapter-item__number">
-                        Capítulo{" "}
+                        {t("details.chapter")}{" "}
                         <span>{chapter.attributes.chapter ?? "—"}</span>
                         {chapter.attributes.title
                           ? ` · ${chapter.attributes.title}`
                           : ""}
                       </span>
-                      <span className="chapter-item__meta">
-                        {chapter.attributes.pages} página
-                        {chapter.attributes.pages === 1 ? "" : "s"}
-                      </span>
+                      {!isRead && resumePage ? (
+                        <span className="chapter-item__resume">
+                          {t("home.continueOnPage", { page: resumePage })}
+                        </span>
+                      ) : (
+                        <span className="chapter-item__meta">
+                          {pageCount === 1
+                            ? t("details.pageOne", { count: pageCount })
+                            : t("details.pageOther", { count: pageCount })}
+                        </span>
+                      )}
                     </div>
 
                     <div className="chapter-item__action">
@@ -385,7 +504,7 @@ export function MangaDetailsPage() {
                         }`}
                         to={`/manga/${manga.id}/reader/${chapter.id}`}
                       >
-                        {isRead ? "Reler" : "Ler"}
+                        {isRead ? t("details.reread") : t("details.read")}
                       </Link>
                     </div>
                   </li>
