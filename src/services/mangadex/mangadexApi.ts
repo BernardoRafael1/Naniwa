@@ -5,7 +5,11 @@ import type {
   MangaDexAtHomeResponse,
 } from "./mangadexTypes";
 
-const MANGADEX_BASE_URL = "https://api.mangadex.org";
+// Na Vercel (web), usar VITE_MANGADEX_API_BASE_URL="/api/mangadex" para
+// passar pelo proxy e evitar CORS. No Tauri/local, sem a variável, chama a
+// MangaDex diretamente.
+const MANGADEX_BASE_URL =
+  import.meta.env.VITE_MANGADEX_API_BASE_URL || "https://api.mangadex.org";
 
 async function mangadexRequest<T>(endpoint: string): Promise<T> {
   const response = await fetch(`${MANGADEX_BASE_URL}${endpoint}`, {
