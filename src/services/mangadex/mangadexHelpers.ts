@@ -6,6 +6,12 @@ import type {
 
 const MANGADEX_COVERS_BASE_URL = "https://uploads.mangadex.org/covers";
 
+// Na Vercel (web), defina VITE_MANGADEX_COVER_PROXY_BASE_URL="/api/mangadex-cover"
+// para carregar as capas via proxy e evitar o placeholder da MangaDex. Vazio
+// (Tauri/local) mantém o carregamento direto do CDN.
+const COVER_PROXY_BASE_URL =
+  import.meta.env.VITE_MANGADEX_COVER_PROXY_BASE_URL || "";
+
 /**
  * Resolve um texto localizado priorizando português, depois inglês e por fim
  * o romaji japonês. Cai para o primeiro valor disponível e, se não houver
@@ -69,4 +75,39 @@ export function getCoverImageUrl(
   }
 
   return `${MANGADEX_COVERS_BASE_URL}/${manga.id}/${fileName}${size}`;
+}
+
+/**
+ * Resolve a URL de capa para o ambiente atual. Na web (com o proxy
+ * configurado), reescreve URLs de capa da MangaDex para o endpoint
+ * `/api/mangadex-cover?mangaId=...&fileName=...`. Em outros casos (ou URLs de
+ * outros domínios), retorna a URL original sem alterações.
+ *
+ * A URL canônica (absoluta) continua sendo a salva na biblioteca; a conversão
+ * para o proxy acontece apenas na hora de renderizar.
+ */
+export function resolveCoverImageUrl(url: string | null): string | null {
+  if (!url || !COVER_PROXY_BASE_URL) {
+    return url;
+  }
+
+  const prefix = `${MANGADEX_COVERS_BASE_URL}/`;
+
+  if (!url.startsWith(prefix)) {
+    return url;
+  }
+
+  const rest = url.slice(prefix.length); // "{mangaId}/{fileName}"
+  const slashIndex = rest.indexOf("/");
+
+  if (slashIndex < 0) {
+    return url;
+  }
+
+  const mangaId = rest.slice(0, slashIndex);
+  const fileName = rest.slice(slashIndex + 1);
+
+  return `${COVER_PROXY_BASE_URL}?mangaId=${encodeURIComponent(
+    mangaId
+  )}&fileName=${encodeURIComponent(fileName)}`;
 }

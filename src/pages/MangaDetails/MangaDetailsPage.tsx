@@ -12,6 +12,7 @@ import {
   getLocalizedText,
   getMangaTitle,
   getRelationshipNames,
+  resolveCoverImageUrl,
 } from "../../services/mangadex/mangadexHelpers";
 import type {
   MangaDexChapter,
@@ -225,7 +226,9 @@ export function MangaDetailsPage() {
   );
   const authors = getRelationshipNames(manga.relationships, "author");
   const artists = getRelationshipNames(manga.relationships, "artist");
-  const coverUrl = getCoverImageUrl(manga, "");
+  // URL canônica (para salvar na biblioteca) e a resolvida (para exibir).
+  const rawCoverUrl = getCoverImageUrl(manga, "");
+  const coverUrl = resolveCoverImageUrl(rawCoverUrl);
 
   const tags = manga.attributes.tags.map((tag) =>
     getLocalizedText(tag.attributes.name)

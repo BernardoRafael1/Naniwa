@@ -16,6 +16,7 @@ import {
 import {
   getCoverImageUrl,
   getMangaTitle,
+  resolveCoverImageUrl,
 } from "../../services/mangadex/mangadexHelpers";
 import type { MangaDexManga } from "../../services/mangadex/mangadexTypes";
 import { getRecentReadingProgress } from "../../services/progress/readingProgressApi";
@@ -162,7 +163,7 @@ export function HomePage() {
               chapterId: entry.chapter_id,
               page: entry.page,
               title: getMangaTitle(details.data),
-              coverUrl: getCoverImageUrl(details.data),
+              coverUrl: resolveCoverImageUrl(getCoverImageUrl(details.data)),
             } satisfies ContinueItem;
           })
         );

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Sidebar } from "../../components/layout/Sidebar";
 import { MangaCover } from "../../components/MangaCover";
 import { useAuth } from "../../contexts/AuthContext";
+import { resolveCoverImageUrl } from "../../services/mangadex/mangadexHelpers";
 import {
   getMyLibraryItems,
   removeLibraryItem,
@@ -182,7 +183,7 @@ export function LibraryPage() {
                   >
                     <div className="manga-card__cover">
                       <MangaCover
-                        url={item.cover_url}
+                        url={resolveCoverImageUrl(item.cover_url)}
                         alt={`Capa de ${item.title}`}
                       />
                     </div>

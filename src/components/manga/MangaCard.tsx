@@ -3,6 +3,7 @@ import { MangaCover } from "../MangaCover";
 import {
   getCoverImageUrl,
   getMangaTitle,
+  resolveCoverImageUrl,
 } from "../../services/mangadex/mangadexHelpers";
 import type { MangaDexManga } from "../../services/mangadex/mangadexTypes";
 
@@ -24,7 +25,7 @@ type MangaCardProps = {
 
 export function MangaCard({ manga }: MangaCardProps) {
   const title = getMangaTitle(manga);
-  const coverUrl = getCoverImageUrl(manga);
+  const coverUrl = resolveCoverImageUrl(getCoverImageUrl(manga));
   const status = manga.attributes.status;
 
   return (
