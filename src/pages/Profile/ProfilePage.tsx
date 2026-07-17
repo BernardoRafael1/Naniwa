@@ -220,8 +220,12 @@ export function ProfilePage() {
         reader_direction: readerDirection,
       });
 
-      // Aplica o novo idioma ao layout imediatamente após salvar.
+      // Aplica idioma e tema ao layout imediatamente após salvar.
       setLanguage(languageChoice);
+
+      const resolvedTheme = resolveTheme(theme);
+      applyTheme(resolvedTheme);
+      storeTheme(resolvedTheme);
 
       setPrefsMessage({ error: "", success: t("profile.preferencesSaved") });
     } catch (error) {
