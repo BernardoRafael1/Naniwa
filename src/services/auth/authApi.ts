@@ -96,6 +96,30 @@ export async function signOutAuthUser(): Promise<void> {
   }
 }
 
+export async function updateAuthUsername(name: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ data: { name } });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function updateAuthEmail(email: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ email });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function updateAuthPassword(password: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export function onAuthSessionChange(
   callback: (session: AuthResponse | null) => void
 ): () => void {

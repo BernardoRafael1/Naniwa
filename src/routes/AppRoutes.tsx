@@ -2,7 +2,9 @@ import { Route, Routes } from "react-router-dom";
 import { LoginPage } from "../pages/Auth/LoginPage";
 import { RegisterPage } from "../pages/Auth/RegisterPage";
 import { HomePage } from "../pages/Home/HomePage";
+import { LibraryPage } from "../pages/Library/LibraryPage";
 import { MangaDetailsPage } from "../pages/MangaDetails/MangaDetailsPage";
+import { ProfilePage } from "../pages/Profile/ProfilePage";
 import { ReaderPage } from "../pages/Reader/ReaderPage";
 
 export function AppRoutes() {
@@ -12,6 +14,9 @@ export function AppRoutes() {
 
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+
+      <Route path="/library" element={<LibraryPage />} />
+      <Route path="/profile" element={<ProfilePage />} />
 
       <Route path="/manga/:mangaId" element={<MangaDetailsPage />} />
       <Route path="/manga/:mangaId/reader/:chapterId" element={<ReaderPage />} />

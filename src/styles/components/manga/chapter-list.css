@@ -49,6 +49,39 @@
   flex: 0 0 auto;
 }
 
+/* Capítulo já lido — aparência esmaecida. */
+.chapter-item--read {
+  background-color: var(--color-surface-muted);
+  border-color: var(--color-border);
+  opacity: 0.72;
+}
+
+.chapter-item--read:hover {
+  opacity: 1;
+}
+
+.chapter-item--read .chapter-item__number {
+  color: var(--color-text-muted);
+}
+
+.chapter-item--read .chapter-item__number span {
+  color: var(--color-text-muted);
+}
+
+.chapter-item__read-badge {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 0.1rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-success);
+  background-color: var(--color-success-soft);
+  border-radius: var(--radius-pill);
+  vertical-align: middle;
+}
+
 @media (max-width: 540px) {
   .chapter-item {
     flex-direction: column;

@@ -38,13 +38,6 @@ const LibraryIcon = (
   </Icon>
 );
 
-const ResumeIcon = (
-  <Icon>
-    <circle cx="12" cy="12" r="8.5" />
-    <path d="M10.5 8.8 15 12l-4.5 3.2Z" />
-  </Icon>
-);
-
 const SearchIcon = (
   <Icon>
     <circle cx="11" cy="11" r="6.5" />
@@ -61,12 +54,10 @@ const CommunityIcon = (
   </Icon>
 );
 
-const SettingsIcon = (
+const ProfileIcon = (
   <Icon>
-    <path d="M5 7h9" />
-    <path d="M10 17h9" />
-    <circle cx="17" cy="7" r="2.3" />
-    <circle cx="7" cy="17" r="2.3" />
+    <circle cx="12" cy="8.5" r="3.4" />
+    <path d="M5 19.5a7 7 0 0 1 14 0" />
   </Icon>
 );
 
@@ -104,11 +95,10 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Início", icon: HomeIcon, to: "/" },
-  { label: "Biblioteca", icon: LibraryIcon, disabled: true },
-  { label: "Continuar lendo", icon: ResumeIcon, disabled: true },
+  { label: "Biblioteca", icon: LibraryIcon, to: "/library" },
+  { label: "Perfil", icon: ProfileIcon, to: "/profile" },
   { label: "Pesquisa avançada", icon: SearchIcon, disabled: true },
   { label: "Comunidade", icon: CommunityIcon, disabled: true },
-  { label: "Configurações", icon: SettingsIcon, disabled: true },
 ];
 
 type SidebarProps = {
@@ -180,7 +170,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <Link
                 key={item.label}
                 to={item.to}
-                className="sidebar__link sidebar__link--active"
+                className="sidebar__link"
                 onClick={onClose}
               >
                 <span className="sidebar__link-icon">{item.icon}</span>

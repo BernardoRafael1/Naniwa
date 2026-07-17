@@ -68,6 +68,25 @@
   color: var(--color-text);
 }
 
+/* Variante de perigo (vermelha, para ações destrutivas) */
+.btn--danger {
+  background-color: var(--color-danger-soft);
+  color: var(--color-danger);
+  border-color: var(--color-danger-border);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background-color: var(--color-danger);
+  color: #ffffff;
+  border-color: var(--color-danger);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px -6px var(--color-danger);
+}
+
+.btn--danger:active:not(:disabled) {
+  transform: translateY(0);
+}
+
 .btn--block {
   width: 100%;
 }

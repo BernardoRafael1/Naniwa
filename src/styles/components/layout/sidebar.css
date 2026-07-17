@@ -85,8 +85,9 @@
 }
 
 .sidebar__link:hover:not(:disabled) {
-  background-color: var(--color-surface-muted);
-  color: var(--color-text);
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-contrast);
+  font-weight: 600;
 }
 
 .sidebar__link--active {

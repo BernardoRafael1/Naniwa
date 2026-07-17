@@ -5,21 +5,38 @@ import {
   useState,
   type MouseEvent,
 } from "react";
-import { Link, useParams } from "react-router-dom";
-import { getChapterPages } from "../../services/mangadex/mangadexApi";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import {
+  getChapterPages,
+  getMangaChapters,
+} from "../../services/mangadex/mangadexApi";
+import { updateLibraryItem } from "../../services/library/libraryApi";
+import {
+  getChapterProgress,
+  upsertReadingProgress,
+} from "../../services/progress/readingProgressApi";
 
 const UI_HIDE_DELAY = 2800;
 
 export function ReaderPage() {
   const { mangaId, chapterId } = useParams();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [pageUrls, setPageUrls] = useState<string[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [isUiVisible, setIsUiVisible] = useState(true);
+  const [nextChapterId, setNextChapterId] = useState<string | null>(null);
+  // Capítulo a que o conteúdo carregado (pageUrls + página atual) pertence.
+  // Evita salvar dados de um capítulo com o id de outro durante a troca.
+  const [loadedChapterId, setLoadedChapterId] = useState<string | null>(null);
 
   const hideTimeoutRef = useRef<number | null>(null);
+  // Última página já persistida, para não salvar em excesso a cada render.
+  const lastSavedPageRef = useRef<number | null>(null);
 
   // Destino do botão "Voltar": detalhes do mangá atual quando temos o id,
   // caindo para a HomePage como rede de segurança.
@@ -46,6 +63,10 @@ export function ReaderPage() {
     }
 
     const currentChapterId = chapterId;
+    const activeUser = user;
+    lastSavedPageRef.current = null;
+    // Invalida o conteúdo anterior até o novo capítulo terminar de carregar.
+    setLoadedChapterId(null);
 
     async function loadChapterPages() {
       try {
@@ -55,7 +76,32 @@ export function ReaderPage() {
         const pages = await getChapterPages(currentChapterId);
 
         setPageUrls(pages);
-        setCurrentPageIndex(0);
+
+        // Retoma a leitura na página salva, se houver progresso online.
+        let startIndex = 0;
+
+        if (activeUser) {
+          try {
+            const progress = await getChapterProgress(
+              activeUser.id,
+              currentChapterId
+            );
+
+            if (
+              progress &&
+              progress.page >= 1 &&
+              progress.page <= pages.length
+            ) {
+              startIndex = progress.page - 1;
+            }
+          } catch (error) {
+            console.error(error);
+          }
+        }
+
+        setCurrentPageIndex(startIndex);
+        // Marca que o conteúdo agora pertence a este capítulo.
+        setLoadedChapterId(currentChapterId);
       } catch (error) {
         setErrorMessage("Não foi possível carregar as páginas do capítulo.");
         console.error(error);
@@ -65,17 +111,132 @@ export function ReaderPage() {
     }
 
     loadChapterPages();
-  }, [chapterId]);
+  }, [chapterId, user?.id]);
+
+  // Salva o progresso online sempre que a página realmente muda.
+  useEffect(() => {
+    if (isLoading || !user || !chapterId || !mangaId) {
+      return;
+    }
+
+    // Só salva quando o conteúdo carregado é realmente deste capítulo,
+    // evitando gravar a última página do capítulo anterior no novo capítulo.
+    if (loadedChapterId !== chapterId) {
+      return;
+    }
+
+    if (pageUrls.length === 0) {
+      return;
+    }
+
+    const page = currentPageIndex + 1;
+    const totalPages = pageUrls.length;
+
+    if (lastSavedPageRef.current === page) {
+      return;
+    }
+
+    lastSavedPageRef.current = page;
+
+    const activeUserId = user.id;
+    const activeMangaId = mangaId;
+    const activeChapterId = chapterId;
+    const completed = page >= totalPages;
+
+    async function saveProgress() {
+      try {
+        await upsertReadingProgress(activeUserId, {
+          manga_id: activeMangaId,
+          chapter_id: activeChapterId,
+          page,
+          total_pages: totalPages,
+          completed,
+        });
+
+        // Atualiza o item da biblioteca, se o mangá estiver salvo.
+        try {
+          await updateLibraryItem(activeUserId, activeMangaId, {
+            last_chapter_id: activeChapterId,
+            last_page: page,
+            total_pages: totalPages,
+            last_read_at: new Date().toISOString(),
+          });
+        } catch (error) {
+          // O mangá pode não estar na biblioteca — ignora silenciosamente.
+          console.error(error);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    saveProgress();
+  }, [
+    currentPageIndex,
+    pageUrls.length,
+    chapterId,
+    mangaId,
+    user?.id,
+    isLoading,
+    loadedChapterId,
+  ]);
+
+  // Descobre o próximo capítulo (ordem crescente) para avanço automático.
+  useEffect(() => {
+    if (!mangaId || !chapterId) {
+      setNextChapterId(null);
+      return;
+    }
+
+    let isActive = true;
+    const currentMangaId = mangaId;
+    const currentChapterId = chapterId;
+
+    async function loadNextChapter() {
+      try {
+        const response = await getMangaChapters(currentMangaId);
+
+        if (!isActive) {
+          return;
+        }
+
+        const chapters = response.data;
+        const currentIndex = chapters.findIndex(
+          (chapter) => chapter.id === currentChapterId
+        );
+
+        const next =
+          currentIndex >= 0 && currentIndex < chapters.length - 1
+            ? chapters[currentIndex + 1].id
+            : null;
+
+        setNextChapterId(next);
+      } catch (error) {
+        console.error(error);
+        if (isActive) {
+          setNextChapterId(null);
+        }
+      }
+    }
+
+    loadNextChapter();
+
+    return () => {
+      isActive = false;
+    };
+  }, [mangaId, chapterId]);
 
   const goToNextPage = useCallback(() => {
-    setCurrentPageIndex((currentIndex) => {
-      if (currentIndex >= pageUrls.length - 1) {
-        return currentIndex;
+    // Passou da última página: avança automaticamente para o próximo capítulo.
+    if (currentPageIndex >= pageUrls.length - 1) {
+      if (nextChapterId && mangaId) {
+        navigate(`/manga/${mangaId}/reader/${nextChapterId}`);
       }
+      return;
+    }
 
-      return currentIndex + 1;
-    });
-  }, [pageUrls.length]);
+    setCurrentPageIndex((currentIndex) => currentIndex + 1);
+  }, [currentPageIndex, pageUrls.length, nextChapterId, mangaId, navigate]);
 
   const goToPreviousPage = useCallback(() => {
     setCurrentPageIndex((currentIndex) => {
@@ -190,7 +351,7 @@ export function ReaderPage() {
           isUiVisible ? "" : "reader-controls--hidden"
         }`}
       >
-        {isLastPage && (
+        {isLastPage && !nextChapterId && (
           <span className="reader-end-note">Fim do capítulo</span>
         )}
 
@@ -207,9 +368,9 @@ export function ReaderPage() {
           className="reader-btn"
           type="button"
           onClick={goToNextPage}
-          disabled={isLastPage}
+          disabled={isLastPage && !nextChapterId}
         >
-          Próxima →
+          {isLastPage && nextChapterId ? "Próximo capítulo →" : "Próxima →"}
         </button>
       </footer>
     </div>

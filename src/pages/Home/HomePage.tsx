@@ -1,15 +1,32 @@
 import { FormEvent, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Sidebar } from "../../components/layout/Sidebar";
+import { MangaCover } from "../../components/MangaCover";
 import { MangaCard } from "../../components/manga/MangaCard";
 import {
   MangaSection,
   type SectionStatus,
 } from "../../components/manga/MangaSection";
+import { useAuth } from "../../contexts/AuthContext";
 import {
+  getMangaDetails,
   getMangaList,
   searchMangaByTitle,
 } from "../../services/mangadex/mangadexApi";
+import {
+  getCoverImageUrl,
+  getMangaTitle,
+} from "../../services/mangadex/mangadexHelpers";
 import type { MangaDexManga } from "../../services/mangadex/mangadexTypes";
+import { getRecentReadingProgress } from "../../services/progress/readingProgressApi";
+
+type ContinueItem = {
+  mangaId: string;
+  chapterId: string;
+  page: number;
+  title: string;
+  coverUrl: string | null;
+};
 
 type SectionKey = "destaque" | "lancamentos" | "populares" | "recomendados";
 
@@ -58,7 +75,12 @@ const INITIAL_SECTIONS: Record<SectionKey, SectionState> = {
 };
 
 export function HomePage() {
+  const { user, isLoading: isAuthLoading } = useAuth();
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const [continueItems, setContinueItems] = useState<ContinueItem[]>([]);
+  const [isContinueLoading, setIsContinueLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<MangaDexManga[]>([]);
@@ -97,6 +119,84 @@ export function HomePage() {
       cancelled = true;
     };
   }, []);
+
+  // Carrega "Continuar lendo" a partir do progresso online do usuário.
+  useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!user) {
+      setContinueItems([]);
+      setIsContinueLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const userId = user.id;
+
+    async function loadContinueReading() {
+      try {
+        setIsContinueLoading(true);
+
+        const progress = await getRecentReadingProgress(userId, 12);
+
+        // Mantém apenas o capítulo mais recente por mangá.
+        const seen = new Set<string>();
+        const recent = progress
+          .filter((entry) => {
+            if (seen.has(entry.manga_id)) {
+              return false;
+            }
+            seen.add(entry.manga_id);
+            return true;
+          })
+          .slice(0, 6);
+
+        const results = await Promise.allSettled(
+          recent.map(async (entry) => {
+            const details = await getMangaDetails(entry.manga_id);
+
+            return {
+              mangaId: entry.manga_id,
+              chapterId: entry.chapter_id,
+              page: entry.page,
+              title: getMangaTitle(details.data),
+              coverUrl: getCoverImageUrl(details.data),
+            } satisfies ContinueItem;
+          })
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        const items = results
+          .filter(
+            (result): result is PromiseFulfilledResult<ContinueItem> =>
+              result.status === "fulfilled"
+          )
+          .map((result) => result.value);
+
+        setContinueItems(items);
+      } catch (error) {
+        console.error(error);
+        if (!cancelled) {
+          setContinueItems([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsContinueLoading(false);
+        }
+      }
+    }
+
+    loadContinueReading();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, isAuthLoading]);
 
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -208,39 +308,81 @@ export function HomePage() {
           </section>
         )}
 
-        {/* Continuar lendo — estado vazio (sem progresso local ainda). */}
-        <section className="manga-section">
-          <div className="manga-section__header">
-            <h2 className="manga-section__title">Continuar lendo</h2>
-          </div>
-          <div className="continue-empty">
-            <span className="continue-empty__icon" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                width="28"
-                height="28"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M6 4h10a1 1 0 0 1 1 1v15H7a1 1 0 0 1-1-1V4Z" />
-                <path d="M6 4a2 2 0 0 0-2 2v12" />
-                <path d="M10 8h4" />
-              </svg>
-            </span>
-            <div>
-              <p className="continue-empty__title">
-                Você ainda não começou nenhuma leitura.
-              </p>
-              <p className="continue-empty__text">
-                Quando abrir um capítulo, ele aparecerá aqui para retomar
-                rapidamente.
-              </p>
+        {/* Continuar lendo — retoma exatamente onde o usuário parou. */}
+        {(!user || isContinueLoading || continueItems.length > 0) && (
+          <section className="manga-section">
+            <div className="manga-section__header">
+              <h2 className="manga-section__title">Continuar lendo</h2>
             </div>
-          </div>
-        </section>
+
+            {!user ? (
+              <div className="continue-empty">
+                <span className="continue-empty__icon" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="28"
+                    height="28"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M6 4h10a1 1 0 0 1 1 1v15H7a1 1 0 0 1-1-1V4Z" />
+                    <path d="M6 4a2 2 0 0 0-2 2v12" />
+                    <path d="M10 8h4" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="continue-empty__title">
+                    Entre para retomar suas leituras.
+                  </p>
+                  <p className="continue-empty__text">
+                    Seu progresso fica salvo online e aparece aqui para
+                    continuar de onde parou.
+                  </p>
+                </div>
+              </div>
+            ) : isContinueLoading ? (
+              <div className="manga-row">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div className="skeleton-card" key={index}>
+                    <div className="skeleton skeleton-card__cover" />
+                    <div className="skeleton-card__body">
+                      <div className="skeleton skeleton-line" />
+                      <div className="skeleton skeleton-line skeleton-line--short" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="manga-row">
+                {continueItems.map((item) => (
+                  <Link
+                    className="manga-card"
+                    to={`/manga/${item.mangaId}/reader/${item.chapterId}`}
+                    key={item.mangaId}
+                  >
+                    <div className="manga-card__cover">
+                      <MangaCover
+                        url={item.coverUrl}
+                        alt={`Capa de ${item.title}`}
+                      />
+                    </div>
+
+                    <div className="manga-card__body">
+                      <h3 className="manga-card__title">{item.title}</h3>
+
+                      <div className="manga-card__meta">
+                        <span>Continuar na página {item.page}</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {SECTION_CONFIG.map(({ key, title, subtitle }) => (
           <MangaSection

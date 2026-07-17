@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { MangaCover } from "../../components/MangaCover";
+import { useAuth } from "../../contexts/AuthContext";
+import { getMangaProgress } from "../../services/progress/readingProgressApi";
 import {
   getMangaChapters,
   getMangaDetails,
@@ -15,14 +17,29 @@ import type {
   MangaDexChapter,
   MangaDexManga,
 } from "../../services/mangadex/mangadexTypes";
+import {
+  getLibraryItem,
+  removeLibraryItem,
+  upsertLibraryItem,
+} from "../../services/library/libraryApi";
+import type { LibraryItem } from "../../services/library/libraryTypes";
 
 export function MangaDetailsPage() {
   const { mangaId } = useParams();
+  const { user, isAuthenticated } = useAuth();
 
   const [manga, setManga] = useState<MangaDexManga | null>(null);
   const [chapters, setChapters] = useState<MangaDexChapter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const [libraryItem, setLibraryItem] = useState<LibraryItem | null>(null);
+  const [isTogglingLibrary, setIsTogglingLibrary] = useState(false);
+  const [libraryError, setLibraryError] = useState("");
+  const [justAdded, setJustAdded] = useState(false);
+  const [readChapterIds, setReadChapterIds] = useState<Set<string>>(new Set());
+
+  const justAddedTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!mangaId) {
@@ -55,6 +72,119 @@ export function MangaDetailsPage() {
 
     loadMangaDetails();
   }, [mangaId]);
+
+  // Carrega o estado de biblioteca e os capítulos já lidos do usuário logado.
+  useEffect(() => {
+    if (!mangaId || !user) {
+      setLibraryItem(null);
+      setReadChapterIds(new Set());
+      return;
+    }
+
+    let isActive = true;
+    const currentUserId = user.id;
+    const currentMangaId = mangaId;
+
+    async function loadUserState() {
+      try {
+        const [item, progress] = await Promise.all([
+          getLibraryItem(currentUserId, currentMangaId),
+          getMangaProgress(currentUserId, currentMangaId),
+        ]);
+
+        if (!isActive) {
+          return;
+        }
+
+        setLibraryItem(item);
+        setReadChapterIds(
+          new Set(
+            progress
+              .filter((entry) => entry.completed)
+              .map((entry) => entry.chapter_id)
+          )
+        );
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    loadUserState();
+
+    return () => {
+      isActive = false;
+    };
+  }, [mangaId, user?.id]);
+
+  // Limpa o timeout da confirmação ao desmontar.
+  useEffect(() => {
+    return () => {
+      if (justAddedTimeoutRef.current !== null) {
+        window.clearTimeout(justAddedTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  async function handleAddToLibrary() {
+    if (!user || !manga) {
+      return;
+    }
+
+    try {
+      setIsTogglingLibrary(true);
+      setLibraryError("");
+
+      const item = await upsertLibraryItem(user.id, {
+        manga_id: manga.id,
+        title: getMangaTitle(manga),
+        cover_url: getCoverImageUrl(manga, ""),
+        status: "planned",
+      });
+
+      setLibraryItem(item);
+
+      // Mostra a confirmação por alguns segundos e depois a esconde.
+      setJustAdded(true);
+      if (justAddedTimeoutRef.current !== null) {
+        window.clearTimeout(justAddedTimeoutRef.current);
+      }
+      justAddedTimeoutRef.current = window.setTimeout(() => {
+        setJustAdded(false);
+      }, 3000);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Não foi possível salvar na biblioteca.";
+      setLibraryError(message);
+    } finally {
+      setIsTogglingLibrary(false);
+    }
+  }
+
+  async function handleRemoveFromLibrary() {
+    if (!user || !manga) {
+      return;
+    }
+
+    try {
+      setIsTogglingLibrary(true);
+      setLibraryError("");
+
+      await removeLibraryItem(user.id, manga.id);
+
+      setLibraryItem(null);
+      setJustAdded(false);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Não foi possível remover da biblioteca.";
+      setLibraryError(message);
+    } finally {
+      setIsTogglingLibrary(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -163,6 +293,45 @@ export function MangaDetailsPage() {
                 </div>
               </div>
             </div>
+
+            {isAuthenticated && (
+              <div className="details-actions">
+                {libraryItem ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn--danger"
+                      onClick={handleRemoveFromLibrary}
+                      disabled={isTogglingLibrary}
+                    >
+                      {isTogglingLibrary
+                        ? "Removendo..."
+                        : "Remover da biblioteca"}
+                    </button>
+                    {justAdded && (
+                      <span className="details-actions__saved">
+                        ✓ Adicionado à biblioteca
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn--primary"
+                    onClick={handleAddToLibrary}
+                    disabled={isTogglingLibrary}
+                  >
+                    {isTogglingLibrary ? "Salvando..." : "Salvar na biblioteca"}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {libraryError && (
+              <p className="details-actions__error" role="alert">
+                {libraryError}
+              </p>
+            )}
           </div>
         </header>
 
@@ -182,31 +351,43 @@ export function MangaDetailsPage() {
             </div>
           ) : (
             <ul className="chapter-list">
-              {chapters.map((chapter) => (
-                <li className="chapter-item" key={chapter.id}>
-                  <div className="chapter-item__info">
-                    <span className="chapter-item__number">
-                      Capítulo <span>{chapter.attributes.chapter ?? "—"}</span>
-                      {chapter.attributes.title
-                        ? ` · ${chapter.attributes.title}`
-                        : ""}
-                    </span>
-                    <span className="chapter-item__meta">
-                      {chapter.attributes.pages} página
-                      {chapter.attributes.pages === 1 ? "" : "s"}
-                    </span>
-                  </div>
+              {chapters.map((chapter) => {
+                const isRead = readChapterIds.has(chapter.id);
 
-                  <div className="chapter-item__action">
-                    <Link
-                      className="btn btn--primary btn--sm"
-                      to={`/manga/${manga.id}/reader/${chapter.id}`}
-                    >
-                      Ler
-                    </Link>
-                  </div>
-                </li>
-              ))}
+                return (
+                  <li
+                    className={`chapter-item ${
+                      isRead ? "chapter-item--read" : ""
+                    }`}
+                    key={chapter.id}
+                  >
+                    <div className="chapter-item__info">
+                      <span className="chapter-item__number">
+                        Capítulo{" "}
+                        <span>{chapter.attributes.chapter ?? "—"}</span>
+                        {chapter.attributes.title
+                          ? ` · ${chapter.attributes.title}`
+                          : ""}
+                      </span>
+                      <span className="chapter-item__meta">
+                        {chapter.attributes.pages} página
+                        {chapter.attributes.pages === 1 ? "" : "s"}
+                      </span>
+                    </div>
+
+                    <div className="chapter-item__action">
+                      <Link
+                        className={`btn btn--sm ${
+                          isRead ? "btn--secondary" : "btn--primary"
+                        }`}
+                        to={`/manga/${manga.id}/reader/${chapter.id}`}
+                      >
+                        {isRead ? "Reler" : "Ler"}
+                      </Link>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
