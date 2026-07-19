@@ -173,6 +173,10 @@ const ptBr = {
   "reader.loading": "Carregando capítulo...",
   "reader.error": "Não foi possível carregar as páginas do capítulo.",
   "reader.noPages": "Nenhuma página encontrada para este capítulo.",
+  "reader.pageLoadError": "Não foi possível carregar esta página.",
+  "reader.pageLoadErrorHint":
+    "Verifique sua conexão e tente novamente. Você também pode avançar para a próxima página.",
+  "reader.retry": "Tentar novamente",
   "reader.chapterIdMissing": "ID do capítulo não encontrado.",
   "reader.pageWord": "Página",
   "reader.ofTotal": "de {total}",
@@ -353,6 +357,10 @@ const en: Record<TranslationKey, string> = {
   "reader.loading": "Loading chapter...",
   "reader.error": "Couldn't load the chapter pages.",
   "reader.noPages": "No pages found for this chapter.",
+  "reader.pageLoadError": "Couldn't load this page.",
+  "reader.pageLoadErrorHint":
+    "Check your connection and try again. You can also skip to the next page.",
+  "reader.retry": "Try again",
   "reader.chapterIdMissing": "Chapter ID not found.",
   "reader.pageWord": "Page",
   "reader.ofTotal": "of {total}",

@@ -117,6 +117,24 @@ export async function getMangaChapters(
   );
 }
 
+// Na Vercel (web), defina VITE_MANGADEX_PAGE_PROXY_BASE_URL="/api/mangadex-page"
+// para carregar as páginas via proxy. Vazio (Tauri/local) mantém a URL
+// original da MangaDex.
+const MANGADEX_PAGE_PROXY_BASE_URL =
+  import.meta.env.VITE_MANGADEX_PAGE_PROXY_BASE_URL || "";
+
+/**
+ * Aplica o proxy de páginas quando configurado; caso contrário devolve a URL
+ * original da MangaDex.
+ */
+export function resolvePageImageUrl(pageUrl: string): string {
+  if (!MANGADEX_PAGE_PROXY_BASE_URL) {
+    return pageUrl;
+  }
+
+  return `${MANGADEX_PAGE_PROXY_BASE_URL}?url=${encodeURIComponent(pageUrl)}`;
+}
+
 export async function getChapterPages(
   chapterId: string
 ): Promise<string[]> {
@@ -125,6 +143,8 @@ export async function getChapterPages(
   );
 
   return chapterPages.chapter.data.map((pageFileName) => {
-    return `${chapterPages.baseUrl}/data/${chapterPages.chapter.hash}/${pageFileName}`;
+    const pageUrl = `${chapterPages.baseUrl}/data/${chapterPages.chapter.hash}/${pageFileName}`;
+
+    return resolvePageImageUrl(pageUrl);
   });
 }

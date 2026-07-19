@@ -32,6 +32,9 @@ export function ReaderPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isUiVisible, setIsUiVisible] = useState(true);
   const [nextChapterId, setNextChapterId] = useState<string | null>(null);
+  const [hasImageError, setHasImageError] = useState(false);
+  // Muda a cada tentativa para forçar o navegador a recarregar a imagem.
+  const [imageRetryToken, setImageRetryToken] = useState(0);
   // Capítulo a que o conteúdo carregado (pageUrls + página atual) pertence.
   // Evita salvar dados de um capítulo com o id de outro durante a troca.
   const [loadedChapterId, setLoadedChapterId] = useState<string | null>(null);
@@ -283,6 +286,18 @@ export function ReaderPage() {
     };
   }, [goToNextPage, goToPreviousPage]);
 
+  // Limpa o estado de erro ao trocar de página ou de capítulo.
+  useEffect(() => {
+    setHasImageError(false);
+  }, [currentPageIndex, chapterId]);
+
+  function handleRetryImage(event: MouseEvent<HTMLButtonElement>) {
+    // Impede que o clique avance a página no leitor.
+    event.stopPropagation();
+    setHasImageError(false);
+    setImageRetryToken((token) => token + 1);
+  }
+
   function handleReaderClick(event: MouseEvent<HTMLDivElement>) {
     const readerArea = event.currentTarget;
     const readerAreaPosition = readerArea.getBoundingClientRect();
@@ -341,12 +356,37 @@ export function ReaderPage() {
       </header>
 
       <div className="reader-stage" onClick={handleReaderClick}>
-        <img
-          key={currentPageIndex}
-          className="reader-page-img"
-          src={currentPageUrl}
-          alt={t("reader.pageWord")}
-        />
+        {hasImageError ? (
+          <div
+            className="reader-page-error"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <span className="reader-page-error__icon" aria-hidden="true">
+              ⚠️
+            </span>
+            <p className="reader-page-error__title">
+              {t("reader.pageLoadError")}
+            </p>
+            <p className="reader-page-error__text">
+              {t("reader.pageLoadErrorHint")}
+            </p>
+            <button
+              type="button"
+              className="reader-btn"
+              onClick={handleRetryImage}
+            >
+              {t("reader.retry")}
+            </button>
+          </div>
+        ) : (
+          <img
+            key={`${currentPageIndex}-${imageRetryToken}`}
+            className="reader-page-img"
+            src={currentPageUrl}
+            alt={`${t("reader.pageWord")} ${currentPageIndex + 1}`}
+            onError={() => setHasImageError(true)}
+          />
+        )}
       </div>
 
       <footer
